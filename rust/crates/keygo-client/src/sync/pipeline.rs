@@ -1278,27 +1278,19 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_account_ends_the_session() {
+    async fn delete_account_steps_up_first_and_keeps_the_session_on_failure() {
         let h = fresh().await;
-        h.transport.push(204, &[], b"");
+        h.transport.push_network_failure(NetworkError::Other);
 
-        h.client.delete_account().await.unwrap();
+        let error = h.client.delete_account("password").await.unwrap_err();
 
-        let request = &h.transport.requests()[FRESH];
-        assert_eq!(request.url, "https://kg.example/api/v1/account");
-        assert_eq!(header(request, "authorization"), Some("DPoP a.b.c"));
-        h.assert_signed_out_locally().await;
-    }
-
-    #[tokio::test]
-    async fn failed_delete_account_keeps_the_session() {
-        let h = fresh().await;
-        h.transport
-            .push(403, &[], &error_body("fresh_auth_required"));
-
-        let error = h.client.delete_account().await.unwrap_err();
-
-        assert_eq!(error, SyncError::FreshAuthRequired);
+        assert!(matches!(error, SyncError::Network(_)), "{error:?}");
+        let requests = h.transport.requests();
+        assert_eq!(requests.len(), FRESH + 1);
+        assert_eq!(
+            requests[FRESH].url,
+            "https://kg.example/api/v1/auth/step-up/start"
+        );
         assert!(h.client.auth.lock().await.access().is_some());
         assert!(h.store.current_refresh_token().is_some());
     }

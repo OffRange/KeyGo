@@ -472,8 +472,9 @@ impl SyncClient {
         detached(async move { self.inner.logout().await }).await
     }
 
-    pub async fn delete_account(self: Arc<Self>) -> Result<(), SyncError> {
-        detached(async move { self.inner.delete_account().await }).await
+    pub async fn delete_account(self: Arc<Self>, password: String) -> Result<(), SyncError> {
+        let password = Zeroizing::new(password);
+        detached(async move { self.inner.delete_account(&password).await }).await
     }
 }
 

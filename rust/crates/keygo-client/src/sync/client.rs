@@ -344,9 +344,10 @@ impl SyncClient {
     /// Permanently deletes the account and all its server data; the local vault is kept.
     /// **This cannot be undone: the account can never be signed in to again, and its server
     /// data is lost and can _not_ be recovered.**
-    /// Needs a fresh sign-in, else [`SyncError::FreshAuthRequired`] (see [`Self::step_up`]).
-    /// Ends the local session on success.
-    pub async fn delete_account(&self) -> SyncResult<()> {
+    /// Always proves `password` first (see [`Self::step_up`]), even on a fresh session: typing
+    /// it is the confirmation. Ends the local session on success.
+    pub async fn delete_account(&self, password: &str) -> SyncResult<()> {
+        self.step_up(password).await?;
         self.call(&DeleteAccount, &()).await?;
         let mut state = self.auth.lock().await;
         // Best effort: the token is dead on the server, so one the store keeps is only rejected.

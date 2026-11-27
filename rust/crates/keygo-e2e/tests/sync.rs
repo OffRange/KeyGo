@@ -311,7 +311,7 @@ async fn client_logout_ends_the_session_on_the_server(db: PgPool) {
 }
 
 #[sqlx::test(migrations = "../keygo-server/migrations")]
-async fn delete_account_needs_a_fresh_sign_in(db: PgPool) {
+async fn delete_account_steps_up_a_stale_session(db: PgPool) {
     let h = harness(&db).await;
     sqlx::query("update sessions set auth_time = to_timestamp($1) where device_id = $2")
         .bind((SystemClock.now_secs() - 301) as f64)
@@ -320,14 +320,7 @@ async fn delete_account_needs_a_fresh_sign_in(db: PgPool) {
         .await
         .unwrap();
 
-    assert_eq!(
-        h.client.delete_account().await.unwrap_err(),
-        SyncError::FreshAuthRequired,
-    );
-    assert_eq!(testing::count(&db, "users").await, 1);
-
-    h.client.step_up(password()).await.unwrap();
-    h.client.delete_account().await.unwrap();
+    h.client.delete_account(password()).await.unwrap();
 
     assert_eq!(testing::count(&db, "users").await, 0);
     assert_eq!(h.store.current_refresh_token(), None);
@@ -338,13 +331,25 @@ async fn delete_account_needs_a_fresh_sign_in(db: PgPool) {
 }
 
 #[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn delete_account_with_a_wrong_password_keeps_the_account(db: PgPool) {
+    let h = harness(&db).await;
+
+    assert_eq!(
+        h.client.delete_account("wrong").await.unwrap_err(),
+        SyncError::InvalidCredentials,
+    );
+
+    assert_eq!(testing::count(&db, "users").await, 1);
+    h.client.devices().await.unwrap();
+}
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
 async fn deleted_account_cannot_sign_in_and_frees_the_username(db: PgPool) {
     let (client, _, state) = signed_out(&db);
     let (ark_session, user_id) = local_account();
     register(&client, &ark_session, user_id, "ada").await;
 
-    // Registration counts as a fresh sign-in.
-    client.delete_account().await.unwrap();
+    client.delete_account(password()).await.unwrap();
 
     let error = client
         .login(
