@@ -24,7 +24,7 @@ fun EntryProviderScope<NavKey>.accountEntries(
     onOpenChangePassword: () -> Unit,
     onOpenConnectServer: () -> Unit,
     onOpenDevices: () -> Unit,
-    navigateUp: () -> Unit
+    navigateUp: () -> Unit,
 ) {
     entry<AccountRoute>(metadata = metadata) {
         AccountScreen(

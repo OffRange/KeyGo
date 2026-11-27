@@ -23,7 +23,7 @@ import de.davisalessandro.keygo.rust.TokenStore as RustTokenStore
 @Single(binds = [RustTokenStore::class, ServerLinkRepository::class])
 internal class TokenStore(
     @SessionStoreQualifier
-    private val dataStore: DataStore<ProtoSessionStore>
+    private val dataStore: DataStore<ProtoSessionStore>,
 ) : RustTokenStore, ServerLinkRepository {
 
     override fun observeLink(): Flow<ServerLink> =

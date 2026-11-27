@@ -12,7 +12,7 @@ internal fun AccountScreen(
     onOpenChangePassword: () -> Unit,
     onOpenConnectServer: () -> Unit,
     onOpenDevices: () -> Unit,
-    navigateUp: () -> Unit
+    navigateUp: () -> Unit,
 ) {
     val viewModel = koinViewModel<AccountViewModel>()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
