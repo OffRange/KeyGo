@@ -39,6 +39,12 @@ enum class SigningKeyId(
     override val id: String,
     override val needsAuthentication: Boolean,
 ) : KeyId {
-    /** Binds sync tokens to this device (DPoP); auth-free so sync can refresh without a prompt. */
+    /**
+     * Binds sync tokens to this device (DPoP). Auth-free, so sync can refresh without a prompt, but
+     * like every key only usable while the device is unlocked (API 28+), so signing fails while the
+     * lock screen shows.
+     */
+    // TODO: reconsider setUnlockedDeviceRequired for this key once background sync exists: a sync
+    //  worker running while the device is locked could not refresh.
     DpopSigningKey("dpop_signing_key", false),
 }
