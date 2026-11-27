@@ -1278,6 +1278,32 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn delete_account_ends_the_session() {
+        let h = fresh().await;
+        h.transport.push(204, &[], b"");
+
+        h.client.delete_account().await.unwrap();
+
+        let request = &h.transport.requests()[FRESH];
+        assert_eq!(request.url, "https://kg.example/api/v1/account");
+        assert_eq!(header(request, "authorization"), Some("DPoP a.b.c"));
+        h.assert_signed_out_locally().await;
+    }
+
+    #[tokio::test]
+    async fn failed_delete_account_keeps_the_session() {
+        let h = fresh().await;
+        h.transport
+            .push(403, &[], &error_body("fresh_auth_required"));
+
+        let error = h.client.delete_account().await.unwrap_err();
+
+        assert_eq!(error, SyncError::FreshAuthRequired);
+        assert!(h.client.auth.lock().await.access().is_some());
+        assert!(h.store.current_refresh_token().is_some());
+    }
+
+    #[tokio::test]
     async fn logout_clears_local_state_when_offline() {
         let h = fresh().await;
         h.transport.push_network_failure(NetworkError::Other);
