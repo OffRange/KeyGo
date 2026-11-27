@@ -172,7 +172,7 @@ private fun SettingsScope.connectedSection(
             title = R.string.delete_account,
             icon = Icons.Default.Delete,
             colors = deleteAccountColors,
-            onClick = {},
+            onClick = { onEvent(AccountUiEvent.OnDeleteAccountClicked) },
         )
     }
 }

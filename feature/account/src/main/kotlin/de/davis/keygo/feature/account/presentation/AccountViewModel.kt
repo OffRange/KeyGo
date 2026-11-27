@@ -83,6 +83,8 @@ internal class AccountViewModel(
                 if (_logoutDialog.value != LogoutDialogState.LoggingOut)
                     _logoutDialog.update { LogoutDialogState.Hidden }
 
+            AccountUiEvent.OnDeleteAccountClicked -> {}
+
             AccountUiEvent.ResetPassword -> _event.trySend(AccountEvent.NavigateToChangePassword)
         }
     }
