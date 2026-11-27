@@ -65,6 +65,22 @@ impl Transport for TowerTransport {
     }
 }
 
+/// Several servers behind one transport, each picked by the origin a request goes to.
+struct ServersTransport(Vec<AppState>);
+
+#[async_trait]
+impl Transport for ServersTransport {
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, NetworkError> {
+        let url = Url::parse(&request.url).map_err(|_| NetworkError::Other)?;
+        let state = self
+            .0
+            .iter()
+            .find(|state| state.public_url.origin() == url.origin())
+            .ok_or(NetworkError::Other)?;
+        TowerTransport(state.clone()).send(request).await
+    }
+}
+
 struct Harness {
     client: SyncClient,
     store: Arc<FakeTokenStore>,
@@ -369,6 +385,42 @@ async fn registering_while_signed_in_ends_the_old_session(db: PgPool) {
     .await;
     assert!(!status.is_success(), "{status}");
     assert_ne!(h.store.current_refresh_token().unwrap(), h.seed_token);
+}
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn registering_on_another_server_ends_the_old_session(db: PgPool) {
+    let h = harness(&db).await;
+    let other = AppState {
+        public_url: Url::parse("http://other.localhost").unwrap(),
+        ..h.state.clone()
+    };
+    let client = SyncClient::new(
+        other.public_url.clone(),
+        Arc::new(ServersTransport(vec![h.state.clone(), other])),
+        Arc::new(FakeSigner::new()),
+        h.store.clone(),
+    )
+    .unwrap();
+    let (ark_session, user_id) = local_account();
+
+    register(&client, &ark_session, user_id, "bob").await;
+
+    let (status, _) = testing::post_with_token(
+        &h.state,
+        &h.prover,
+        "/api/v1/auth/logout",
+        &h.access_token,
+        serde_json::Value::Null,
+    )
+    .await;
+    assert!(
+        !status.is_success(),
+        "the first server's session is revoked: {status}"
+    );
+    assert_eq!(
+        h.store.current().unwrap().server.as_str(),
+        "http://other.localhost/"
+    );
 }
 
 #[sqlx::test(migrations = "../keygo-server/migrations")]

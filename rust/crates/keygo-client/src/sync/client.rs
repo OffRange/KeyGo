@@ -33,6 +33,8 @@ pub struct SyncClient {
     pub(super) base_url: Url,
     pub(super) transport: Arc<dyn Transport>,
     pub(super) prover: DpopProver<SharedSigner>,
+    /// Kept beside `prover` to build a client for the server of a session this one replaces.
+    signer: SharedSigner,
     pub(super) tokens: Arc<dyn TokenStore>,
     pub(super) clock: Arc<dyn Clock>,
     pub(super) auth: Mutex<AuthState>,
@@ -65,7 +67,8 @@ impl SyncClient {
         Ok(Self {
             base_url,
             transport,
-            prover: DpopProver::new(signer),
+            prover: DpopProver::new(signer.clone()),
+            signer,
             tokens,
             clock: Arc::new(SystemClock),
             auth: Mutex::new(AuthState::default()),
@@ -274,13 +277,38 @@ impl SyncClient {
         sent_at: u64,
         claimed: Option<DeviceId>,
     ) {
-        // The server already revoked a reattached device's old session. The logout is best effort:
-        // the new session is live on the server either way.
+        // The server already revoked a reattached device's old session.
         if !is_reattached(&session, claimed) {
-            let _ = self.logout().await;
+            self.end_previous_session().await;
         }
         self.adopt_session(session, SessionOwner::from(account), sent_at)
             .await;
+    }
+
+    /// Logs out the session this client's new one replaces, on the server that issued it. A
+    /// session of another server is never sent here, so it goes through a client for its own
+    /// origin first; this client's logout then ends whatever it still holds itself. Best effort:
+    /// the new session is live on the server either way.
+    async fn end_previous_session(&self) {
+        let stored = self.tokens.load().await.ok().flatten();
+        if let Some(stored) = stored.filter(|stored| stored.server != self.base_url)
+            && let Ok(issuer) = self.for_server(stored.server)
+        {
+            let _ = issuer.logout().await;
+        }
+        let _ = self.logout().await;
+    }
+
+    /// A client for another origin that shares this one's transport, key, token store and clock.
+    fn for_server(&self, base_url: Url) -> SyncResult<Self> {
+        let mut client = Self::new(
+            base_url,
+            self.transport.clone(),
+            self.signer.clone(),
+            self.tokens.clone(),
+        )?;
+        client.clock = self.clock.clone();
+        Ok(client)
     }
 
     /// Ends a session this client will not keep, signing with that session's own token. Best
@@ -637,8 +665,10 @@ mod tests {
             assert_eq!(transport.requests().len(), 1, "no logout");
         }
 
+        /// The other server's session is logged out on that server, and its refresh token never
+        /// reaches this one.
         #[tokio::test]
-        async fn never_sends_another_server_its_refresh_token() {
+        async fn another_servers_session_is_logged_out_on_its_server() {
             let (client, transport, store) =
                 client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
             store.seed(StoredSession::signed_in_to(
@@ -649,6 +679,8 @@ mod tests {
             ));
             transport.push_with(200, start_reply);
             transport.push(200, &[], &finish_reply());
+            transport.push(200, &[], &old_session_reply());
+            transport.push(204, &[], b"");
             let (ark_session, user_id) = unlocked();
 
             client
@@ -656,16 +688,51 @@ mod tests {
                 .await
                 .unwrap();
 
+            let requests = transport.requests();
             assert_eq!(
-                paths(&transport.requests()),
+                paths(&requests),
                 [
                     "/api/v1/auth/register/start",
-                    "/api/v1/auth/register/finish"
+                    "/api/v1/auth/register/finish",
+                    "https://other.example/api/v1/auth/token",
+                    "https://other.example/api/v1/auth/logout",
                 ],
+            );
+            assert!(
+                requests
+                    .iter()
+                    .filter(|r| r.url.starts_with("https://kg.example/"))
+                    .all(|r| !String::from_utf8_lossy(&r.body).contains(OLD_REFRESH)),
             );
             assert_eq!(
                 store.current().unwrap().server.as_str(),
                 "https://kg.example/"
+            );
+            assert_eq!(store.current_refresh_token().as_deref(), Some(REFRESH));
+        }
+
+        #[tokio::test]
+        async fn failed_register_keeps_another_servers_session() {
+            let (client, transport, store) =
+                client_with_store("https://kg.example", Arc::new(FakeSigner::new()));
+            store.seed(StoredSession::signed_in_to(
+                "https://other.example",
+                DeviceId::random(),
+                OLD_REFRESH.parse().unwrap(),
+                u64::MAX / 2,
+            ));
+            transport.push(409, &[], &error_body("username_taken"));
+            let (ark_session, user_id) = unlocked();
+
+            client
+                .register(&ark_session, user_id, "ada".into(), "pw", None, device())
+                .await
+                .unwrap_err();
+
+            assert_eq!(transport.requests().len(), 1, "no logout");
+            assert_eq!(
+                store.current().unwrap().server.as_str(),
+                "https://other.example/"
             );
         }
 
@@ -958,6 +1025,7 @@ mod tests {
             assert_eq!(store.current_refresh_token().as_deref(), Some(REFRESH));
         }
 
+        /// The device is never claimed, and the other server's session is ended on that server.
         #[tokio::test]
         async fn never_claims_a_device_of_another_server() {
             let (client, transport, store) = client();
@@ -971,6 +1039,8 @@ mod tests {
             let server = Server::holding(&ark_session);
             server.answer_start(&transport);
             server.answer_finish(&transport, NEW_DEVICE);
+            transport.push(200, &[], &old_session_reply());
+            transport.push(204, &[], b"");
 
             client
                 .login(&ark_session, "ada".into(), PASSWORD, device())
@@ -978,12 +1048,14 @@ mod tests {
                 .unwrap();
 
             let requests = transport.requests();
-            assert_eq!(
-                requests.len(),
-                2,
-                "nothing is sent for the other server's session"
-            );
             assert_eq!(claimed_device(&requests[1]), Value::Null);
+            assert_eq!(
+                paths(&requests)[2..],
+                [
+                    "https://other.example/api/v1/auth/token",
+                    "https://other.example/api/v1/auth/logout",
+                ],
+            );
             assert_eq!(
                 store.current().unwrap().server.as_str(),
                 "https://kg.example/"
