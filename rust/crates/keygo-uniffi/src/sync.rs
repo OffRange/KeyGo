@@ -1,14 +1,13 @@
 use crate::ark_session::ArkSession;
 use async_trait::async_trait;
-use keygo_api::domain::{AppVersion, Device, DeviceInfo, DeviceName, Platform};
+use keygo_api::domain::{AppVersion, Device, DeviceInfo, DeviceName, Platform, Username};
 use keygo_api::meta::ServerInfo;
 use keygo_client::crypto::{DeviceId, UserId};
 use keygo_client::sync::{
-    Account as CoreAccount, Header, HttpRequest as CoreHttpRequest, HttpResponse,
+    Account as CoreAccount, Header, HttpRequest as CoreHttpRequest, HttpResponse, NetworkError,
     SignError as CoreSignError, StoredSession as CoreStoredSession, SyncClient as CoreSyncClient,
     SyncError as CoreSyncError, SyncResult, TokenStore as CoreTokenStore,
     TokenStoreError as CoreTokenStoreError, Transport as CoreTransport,
-    TransportError as CoreTransportError,
 };
 use keygo_dpop::{DpopSigner, Signature, VerifyingKey};
 use std::fmt::Display;
@@ -40,13 +39,22 @@ pub enum SyncError {
     /// The account signed in to holds a different ARK than the unlocked local vault.
     #[error("account mismatch")]
     AccountMismatch,
-    #[error("network error: {reason}")]
-    Network { reason: String },
+    #[error("network error: {kind:?}")]
+    Network { kind: NetworkError },
+    /// KeyGo answered with one of its own error codes; `code` is the wire name.
     #[error("server error {code}: {reason}")]
     Server { code: String, reason: String },
-    #[error("client error: {reason}")]
-    Client { reason: String },
-    #[error("{reason}")]
+    /// Something answered with a body this client cannot use, so likely not a KeyGo server.
+    #[error("invalid response: {reason}")]
+    InvalidResponse { reason: String },
+    /// A non-KeyGo error body with this status: a reverse proxy, a redirect, a foreign server.
+    #[error("unexpected status {status}: {reason}")]
+    UnexpectedStatus { status: u16, reason: String },
+    /// A bug or a broken host dependency, never the user's input. `reason` is for logs only.
+    #[error("internal error: {reason}")]
+    Internal { reason: String },
+    /// The server address is not a plain http(s) origin.
+    #[error("invalid server url: {reason}")]
     InvalidUrl { reason: String },
 }
 
@@ -65,15 +73,18 @@ impl From<CoreSyncError> for SyncError {
             CoreSyncError::RateLimited => Self::RateLimited,
             CoreSyncError::VaultLocked => Self::VaultLocked,
             CoreSyncError::AccountMismatch => Self::AccountMismatch,
-            CoreSyncError::Network { message } => Self::Network { reason: message },
+            CoreSyncError::Network(kind) => Self::Network { kind },
             CoreSyncError::Server { code, message } => Self::Server {
                 code,
                 reason: message,
             },
-            CoreSyncError::Client { message } => Self::Client { reason: message },
-            CoreSyncError::InvalidUrl(e) => Self::InvalidUrl {
-                reason: e.to_string(),
+            CoreSyncError::InvalidResponse { message } => Self::InvalidResponse { reason: message },
+            CoreSyncError::UnexpectedStatus { status, message } => Self::UnexpectedStatus {
+                status,
+                reason: message,
             },
+            CoreSyncError::Internal { message } => Self::Internal { reason: message },
+            CoreSyncError::InvalidUrl { message } => Self::InvalidUrl { reason: message },
         }
     }
 }
@@ -104,10 +115,21 @@ macro_rules! callback_error {
 }
 
 callback_error!(
-    TransportError => CoreTransportError,
     SignError => CoreSignError,
     TokenStoreError => CoreTokenStoreError,
 );
+
+#[uniffi::remote(Error)]
+pub enum NetworkError {
+    UnknownHost,
+    Timeout,
+    Refused,
+    Unreachable,
+    CleartextBlocked,
+    UntrustedCertificate,
+    Tls,
+    Other,
+}
 
 #[uniffi::remote(Record)]
 pub struct Header {
@@ -143,6 +165,9 @@ pub struct HttpResponse {
 
 #[derive(uniffi::Record)]
 pub struct StoredSession {
+    pub server_url: String,
+    pub user_id: UserId,
+    pub username: String,
     pub device_id: DeviceId,
     pub refresh_token: String,
     pub refresh_expires_at: u64,
@@ -151,6 +176,9 @@ pub struct StoredSession {
 impl From<&CoreStoredSession> for StoredSession {
     fn from(session: &CoreStoredSession) -> Self {
         Self {
+            server_url: session.server.to_string(),
+            user_id: session.user_id,
+            username: session.username.as_str().to_owned(),
             device_id: session.device_id,
             refresh_token: session.refresh_token.expose_encoded().to_string(),
             refresh_expires_at: session.refresh_expires_at,
@@ -175,7 +203,7 @@ impl DeviceDetails {
 }
 
 fn invalid_device(error: impl Display) -> SyncError {
-    SyncError::Client {
+    SyncError::Internal {
         reason: format!("invalid device details: {error}"),
     }
 }
@@ -235,7 +263,7 @@ impl From<CoreAccount> for Account {
 #[uniffi::export(with_foreign)]
 #[async_trait]
 pub trait HttpTransport: Send + Sync {
-    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError>;
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, NetworkError>;
 }
 
 /// A hardware-backed P-256 key held by the host.
@@ -260,8 +288,8 @@ struct TransportAdapter(Arc<dyn HttpTransport>);
 
 #[async_trait]
 impl CoreTransport for TransportAdapter {
-    async fn send(&self, request: CoreHttpRequest) -> Result<HttpResponse, CoreTransportError> {
-        Ok(self.0.send(request.into()).await?)
+    async fn send(&self, request: CoreHttpRequest) -> Result<HttpResponse, NetworkError> {
+        self.0.send(request.into()).await
     }
 }
 
@@ -272,11 +300,11 @@ struct ForeignSigner {
 
 impl ForeignSigner {
     fn new(key: Arc<dyn DpopKey>) -> Result<Self, SyncError> {
-        let public_key = key.public_key().map_err(|e| SyncError::Client {
+        let public_key = key.public_key().map_err(|e| SyncError::Internal {
             reason: format!("could not read the DPoP public key: {e}"),
         })?;
         let verifying =
-            VerifyingKey::from_sec1_bytes(&public_key).map_err(|_| SyncError::Client {
+            VerifyingKey::from_sec1_bytes(&public_key).map_err(|_| SyncError::Internal {
                 reason: "the DPoP public key is not a P-256 point".into(),
             })?;
         Ok(Self { key, verifying })
@@ -302,20 +330,28 @@ struct StoreAdapter(Arc<dyn TokenStore>);
 
 #[async_trait]
 impl CoreTokenStore for StoreAdapter {
-    /// A token that no longer parses counts as no session, so the user just signs in again.
+    /// A session that no longer parses counts as no session, so the user just signs in again.
     async fn load(&self) -> Result<Option<CoreStoredSession>, CoreTokenStoreError> {
         let Some(stored) = self.0.load().await? else {
             return Ok(None);
         };
         let refresh_token = Zeroizing::new(stored.refresh_token);
-        Ok(refresh_token
-            .parse()
-            .ok()
-            .map(|refresh_token| CoreStoredSession {
-                device_id: stored.device_id,
-                refresh_token,
-                refresh_expires_at: stored.refresh_expires_at,
-            }))
+        let parsed = (
+            Url::parse(&stored.server_url),
+            Username::parse(&stored.username),
+            refresh_token.parse(),
+        );
+        let (Ok(server), Ok(username), Ok(refresh_token)) = parsed else {
+            return Ok(None);
+        };
+        Ok(Some(CoreStoredSession {
+            server,
+            user_id: stored.user_id,
+            username,
+            device_id: stored.device_id,
+            refresh_token,
+            refresh_expires_at: stored.refresh_expires_at,
+        }))
     }
 
     async fn save(&self, session: &CoreStoredSession) -> Result<(), CoreTokenStoreError> {
@@ -337,7 +373,7 @@ async fn detached<T: Send + 'static>(
 ) -> Result<T, SyncError> {
     tokio::spawn(call)
         .await
-        .map_err(|_| SyncError::Client {
+        .map_err(|_| SyncError::Internal {
             reason: "the sync task did not finish".into(),
         })?
         .map_err(Into::into)
@@ -352,8 +388,8 @@ impl SyncClient {
         dpop_key: Arc<dyn DpopKey>,
         tokens: Arc<dyn TokenStore>,
     ) -> Result<Arc<Self>, SyncError> {
-        let base_url = Url::parse(&base_url).map_err(|e| SyncError::Client {
-            reason: format!("invalid server url: {e}"),
+        let base_url = Url::parse(&base_url).map_err(|e| SyncError::InvalidUrl {
+            reason: e.to_string(),
         })?;
         let inner = CoreSyncClient::new(
             base_url,
@@ -462,6 +498,9 @@ mod tests {
         fn holding(refresh_token: &str) -> Arc<Self> {
             Arc::new(Self {
                 session: Mutex::new(Some(StoredSession {
+                    server_url: "https://kg.example/".into(),
+                    user_id: UserId::random(),
+                    username: "ada".into(),
                     device_id: DeviceId::random(),
                     refresh_token: refresh_token.into(),
                     refresh_expires_at: u64::MAX,
@@ -481,6 +520,9 @@ mod tests {
         async fn load(&self) -> Result<Option<StoredSession>, TokenStoreError> {
             let session = self.session.lock().unwrap();
             Ok(session.as_ref().map(|s| StoredSession {
+                server_url: s.server_url.clone(),
+                user_id: s.user_id,
+                username: s.username.clone(),
                 device_id: s.device_id,
                 refresh_token: s.refresh_token.clone(),
                 refresh_expires_at: s.refresh_expires_at,
@@ -523,13 +565,22 @@ mod tests {
 
     #[async_trait]
     impl HttpTransport for RecordingTransport {
-        async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        async fn send(&self, request: HttpRequest) -> Result<HttpResponse, NetworkError> {
             self.methods.lock().unwrap().push(request.method);
             Ok(HttpResponse {
                 status: 204,
                 headers: Vec::new(),
                 body: Vec::new(),
             })
+        }
+    }
+
+    struct FailingTransport(NetworkError);
+
+    #[async_trait]
+    impl HttpTransport for FailingTransport {
+        async fn send(&self, _: HttpRequest) -> Result<HttpResponse, NetworkError> {
+            Err(self.0)
         }
     }
 
@@ -541,7 +592,7 @@ mod tests {
 
     #[async_trait]
     impl HttpTransport for GatedTransport {
-        async fn send(&self, _: HttpRequest) -> Result<HttpResponse, TransportError> {
+        async fn send(&self, _: HttpRequest) -> Result<HttpResponse, NetworkError> {
             self.reached.notify_one();
             self.release.notified().await;
             Ok(HttpResponse {
@@ -610,10 +661,14 @@ mod tests {
     #[tokio::test]
     async fn stored_session_round_trips_through_the_adapter() {
         let adapter = StoreAdapter(Arc::new(MemoryStore::default()));
+        let user_id = UserId::random();
         let device_id = DeviceId::random();
 
         adapter
             .save(&CoreStoredSession {
+                server: Url::parse("https://kg.example").unwrap(),
+                user_id,
+                username: Username::parse("ada").unwrap(),
                 device_id,
                 refresh_token: STORED_TOKEN.parse().unwrap(),
                 refresh_expires_at: 99,
@@ -622,6 +677,9 @@ mod tests {
             .unwrap();
         let loaded = adapter.load().await.unwrap().unwrap();
 
+        assert_eq!(loaded.server.as_str(), "https://kg.example/");
+        assert_eq!(loaded.user_id, user_id);
+        assert_eq!(loaded.username.as_str(), "ada");
         assert_eq!(loaded.refresh_token.expose_encoded().as_str(), STORED_TOKEN);
         assert_eq!(loaded.device_id, device_id);
         assert_eq!(loaded.refresh_expires_at, 99);
@@ -646,7 +704,10 @@ mod tests {
             app_version: "2.3.0".into(),
         };
 
-        assert!(matches!(device.into_core(), Err(SyncError::Client { .. }),));
+        assert!(matches!(
+            device.into_core(),
+            Err(SyncError::Internal { .. }),
+        ));
     }
 
     #[tokio::test]
@@ -689,7 +750,22 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_panicking_call_is_a_client_error() {
+    async fn a_transport_failure_keeps_its_kind() {
+        let client = client(
+            Arc::new(FailingTransport(NetworkError::UntrustedCertificate)),
+            Arc::new(MemoryStore::default()),
+        );
+
+        assert!(matches!(
+            client.meta().await,
+            Err(SyncError::Network {
+                kind: NetworkError::UntrustedCertificate,
+            }),
+        ));
+    }
+
+    #[tokio::test]
+    async fn a_panicking_call_is_an_internal_error() {
         let client = client(
             Arc::new(RecordingTransport::default()),
             Arc::new(PanickingStore),
@@ -697,12 +773,12 @@ mod tests {
 
         assert!(matches!(
             client.devices().await,
-            Err(SyncError::Client { .. }),
+            Err(SyncError::Internal { .. }),
         ));
     }
 
     #[test]
-    fn a_throwing_public_key_is_a_client_error() {
+    fn a_throwing_public_key_is_an_internal_error() {
         let result = SyncClient::new(
             "https://kg.example".into(),
             Arc::new(RecordingTransport::default()),
@@ -710,7 +786,24 @@ mod tests {
             Arc::new(MemoryStore::default()),
         );
 
-        assert!(matches!(result, Err(SyncError::Client { .. })));
+        assert!(matches!(result, Err(SyncError::Internal { .. })));
+    }
+
+    #[test]
+    fn a_bad_server_address_is_an_invalid_url() {
+        for address in ["not a url", "https://kg.example/vault", "ftp://kg.example"] {
+            let result = SyncClient::new(
+                address.into(),
+                Arc::new(RecordingTransport::default()),
+                Arc::new(TestKey(TestSigner::new())),
+                Arc::new(MemoryStore::default()),
+            );
+
+            assert!(
+                matches!(result, Err(SyncError::InvalidUrl { .. })),
+                "for {address}",
+            );
+        }
     }
 
     #[test]
@@ -722,7 +815,7 @@ mod tests {
             Arc::new(MemoryStore::default()),
         );
 
-        assert!(matches!(result, Err(SyncError::Client { .. })));
+        assert!(matches!(result, Err(SyncError::Internal { .. })));
     }
 
     #[test]

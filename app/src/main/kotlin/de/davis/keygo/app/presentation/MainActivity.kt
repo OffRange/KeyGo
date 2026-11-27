@@ -30,12 +30,14 @@ import de.davis.keygo.app.presentation.navigation.keyGoEntryProvider
 import de.davis.keygo.app.presentation.navigation.rememberAppNavigationState
 import de.davis.keygo.app.presentation.navigation.resolveAppShell
 import de.davis.keygo.core.presentation.model.RouteDestination
+import de.davis.keygo.core.sync.domain.stepup.StepUpPrompter
 import de.davis.keygo.core.ui.composition.LocalIsInSinglePaneMode
 import de.davis.keygo.core.ui.navigation.KeyGoNavDisplay
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
 import de.davis.keygo.core.util.presentation.snackbar.LocalSnackbarManager
 import de.davis.keygo.core.util.presentation.snackbar.SnackbarHandler
+import de.davis.keygo.core.sync.presentation.stepup.StepUpDialogHost
 import de.davis.keygo.feature.auth.presentation.AuthRoute
 import de.davis.keygo.feature.onboarding.presentation.OnboardingRoute
 import de.davis.keygo.feature.totp.presentation.TotpImportDeepLinkMatcher
@@ -118,6 +120,7 @@ private fun App(
     val navigator = remember(navigationState) { AppNavigator(navigationState) }
 
     LockAppWhenSessionEnds(isSessionActive, navigator)
+    AbandonStepUpWhenSessionEnds(isSessionActive)
 
     LaunchedEffect(requestedTopLevelRoute) {
         if (requestedTopLevelRoute == null) return@LaunchedEffect
@@ -143,6 +146,8 @@ private fun App(
 
     val snackbarHostState = remember { SnackbarHostState() }
     SnackbarHandler(snackbarHostState)
+    // Not over the lock screen.
+    if (isSessionActive) StepUpDialogHost()
 
     CompositionLocalProvider(LocalIsInSinglePaneMode provides !listPaneVisible) {
         KeyGoNavigationWrapper(
@@ -178,6 +183,15 @@ private fun LockAppWhenSessionEnds(isSessionActive: Boolean, navigator: AppNavig
     val topOverlayRoute = navigator.state.overlayStack.lastOrNull()
     LaunchedEffect(isSessionActive, topOverlayRoute) {
         if (!isSessionActive) navigator.lock()
+    }
+}
+
+/** Cancels a pending step-up when its session ends, so it doesn't run after the next unlock. */
+@Composable
+private fun AbandonStepUpWhenSessionEnds(isSessionActive: Boolean) {
+    val stepUpPrompter = koinInject<StepUpPrompter>()
+    LaunchedEffect(isSessionActive) {
+        if (!isSessionActive) stepUpPrompter.abandon()
     }
 }
 

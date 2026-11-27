@@ -3,12 +3,24 @@ package de.davis.keygo.core.security.domain.model
 /**
  * Every Android Keystore alias this app owns.
  *
- * An enum rather than a constructible type: [id] and [needsAuthentication] are only meaningful as a
- * pair, and [needsAuthentication] is read once, at key creation. A caller free to name an existing
- * alias under a weaker policy could otherwise mint an auth-free key where an auth-bound one was
- * intended, so the set of aliases is closed here by construction.
+ * A sealed interface over enums rather than a constructible type: [id] and [needsAuthentication]
+ * are only meaningful as a pair, and [needsAuthentication] is read once, at key creation. A caller
+ * free to name an existing alias under a weaker policy could otherwise mint an auth-free key where
+ * an auth-bound one was intended, so the set of aliases is closed here by construction.
+ *
+ * Each subtype is one kind of key, so an operation only accepts the kind it can run on: a cipher is
+ * only ever made from a [CipherKeyId], a signature only from a [SigningKeyId].
  */
-enum class KeyId(val id: String, val needsAuthentication: Boolean) {
+sealed interface KeyId {
+    val id: String
+    val needsAuthentication: Boolean
+}
+
+/** AES-256-GCM secret keys that wrap or encrypt other key material. */
+enum class CipherKeyId(
+    override val id: String,
+    override val needsAuthentication: Boolean,
+) : KeyId {
     /** Wraps the account's ARK for biometric unlock; this key can only be used once unlocked via biometrics */
     BiometricVaultKek("biometric_vault_kek", true),
 
@@ -20,4 +32,19 @@ enum class KeyId(val id: String, val needsAuthentication: Boolean) {
      * as [BackupPassphraseKey].
      */
     BackupArkKey("backup_ark_key", false),
+}
+
+/** P-256 key pairs that sign with SHA256withECDSA; the private half never leaves the Keystore. */
+enum class SigningKeyId(
+    override val id: String,
+    override val needsAuthentication: Boolean,
+) : KeyId {
+    /**
+     * Binds sync tokens to this device (DPoP). Auth-free, so sync can refresh without a prompt, but
+     * like every key only usable while the device is unlocked (API 28+), so signing fails while the
+     * lock screen shows.
+     */
+    // TODO: reconsider setUnlockedDeviceRequired for this key once background sync exists: a sync
+    //  worker running while the device is locked could not refresh.
+    DpopSigningKey("dpop_signing_key", false),
 }

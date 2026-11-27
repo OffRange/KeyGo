@@ -68,9 +68,21 @@ impl Username {
             return Err(UsernameError::TooLong);
         }
 
-        let name: String = raw.nfkc().map(|c| c.to_ascii_lowercase()).collect();
+        let name = Self::normalize(raw);
         validate(&name)?;
         Ok(Self(name))
+    }
+
+    pub fn normalize(raw: impl AsRef<str>) -> String {
+        raw.as_ref()
+            .nfkc()
+            .map(|c| c.to_ascii_lowercase())
+            .collect()
+    }
+
+    /// Whether `c` belongs to [`Self::ALLOWED_CHARS`], judged after normalizing.
+    pub fn is_allowed_char(c: char) -> bool {
+        is_alphanumeric(c) || is_separator(c)
     }
 
     pub fn as_str(&self) -> &str {
@@ -83,10 +95,7 @@ impl Username {
 }
 
 fn validate(name: &str) -> Result<(), UsernameError> {
-    if let Some(c) = name
-        .chars()
-        .find(|&c| !is_alphanumeric(c) && !is_separator(c))
-    {
+    if let Some(c) = name.chars().find(|&c| !Username::is_allowed_char(c)) {
         return Err(UsernameError::InvalidCharacter(c));
     }
 
@@ -158,6 +167,12 @@ mod tests {
     fn folds_fullwidth_and_compatibility_forms() {
         assert_eq!(parsed("ｊｏｈｎ"), "john");
         assert_eq!(parsed("ﬁnn"), "finn");
+    }
+
+    #[test]
+    fn normalize_folds_without_validating() {
+        assert_eq!(Username::normalize("ＪｏＨＮ..ﬁ"), "john..fi");
+        assert_eq!(Username::normalize("jöhn"), "jöhn");
     }
 
     #[test]
@@ -251,8 +266,7 @@ mod tests {
         };
 
         for c in (0..=0x7f).map(char::from) {
-            let accepted = is_alphanumeric(c) || is_separator(c);
-            assert_eq!(advertised(c), accepted, "{c:?}");
+            assert_eq!(advertised(c), Username::is_allowed_char(c), "{c:?}");
         }
     }
 }

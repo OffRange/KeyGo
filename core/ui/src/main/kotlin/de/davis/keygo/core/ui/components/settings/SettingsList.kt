@@ -1,0 +1,308 @@
+package de.davis.keygo.core.ui.components.settings
+
+import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItemColors
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItemShapes
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.ui.R
+import de.davis.keygo.core.util.presentation.asString
+
+object SettingsListDefaults {
+    val colors: ListItemColors
+        @Composable
+        get() = ListItemDefaults.segmentedColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            leadingContentColor = MaterialTheme.colorScheme.primaryContainer,
+        )
+
+    @Composable
+    fun shapes(index: Int, count: Int): ListItemShapes =
+        if (count == 1) ListItemDefaults.shapes(MaterialTheme.shapes.large)
+        else ListItemDefaults.segmentedShapes(index, count)
+}
+
+@Composable
+fun SettingsList(
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
+    content: SettingsScope.() -> Unit,
+) {
+    val blocks = SettingsScope().apply(content).build()
+
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = contentPadding,
+        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+    ) {
+        blocks.forEach { block ->
+            when (block) {
+                is SettingsBlock.SettingsCustom -> item(
+                    key = "custom_${block.key}",
+                    content = block.content
+                )
+
+                is SettingsBlock.SettingsSection -> settingsSection(block)
+            }
+        }
+    }
+}
+
+private fun LazyListScope.settingsSection(section: SettingsBlock.SettingsSection) {
+    if (section.title != null) stickyHeader(key = "header_${section.key}") {
+        SettingsSectionHeader(
+            title = section.title,
+            modifier = Modifier.animateItem()
+        )
+    }
+    else item(key = "header_${section.key}") {
+        Spacer(
+            modifier = Modifier
+                .height(24.dp)
+                .animateItem()
+        )
+    }
+
+    itemsIndexed(
+        items = section.entries,
+        key = { _, item ->
+            when (item) {
+                is SettingsEntry -> "${section.key}_${item.title}"
+                is SettingsBlock.SettingsCustom -> "${section.key}_custom_${item.key}"
+            }
+        },
+    ) { index, item ->
+        when (item) {
+            is SettingsEntry -> SettingsEntryRow(
+                entry = item,
+                shapes = SettingsListDefaults.shapes(index, section.entries.size),
+                colors = item.colors ?: SettingsListDefaults.colors,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.animateItem()
+            )
+
+            is SettingsBlock.SettingsCustom -> item.content(this)
+        }
+    }
+}
+
+@Composable
+private fun SettingsEntryRow(
+    entry: SettingsEntry,
+    shapes: ListItemShapes,
+    colors: ListItemColors,
+    verticalAlignment: Alignment.Vertical,
+    modifier: Modifier = Modifier,
+) {
+    val leadingContent: (@Composable () -> Unit)? = entry.icon?.let { icon ->
+        {
+            Surface(
+                color = colors.leadingContentColor,
+                shape = CircleShape,
+                modifier = Modifier.size(40.dp),
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                    )
+                }
+            }
+        }
+    }
+    val supportingContent: (@Composable () -> Unit)? = entry.supporting?.let { supporting ->
+        { Text(text = supporting.asString()) }
+    }
+    val headlineContent: @Composable () -> Unit = { Text(text = stringResource(entry.title)) }
+
+    when (entry) {
+        is SettingsEntry.Toggle -> SegmentedListItem(
+            onClick = { entry.onCheckedChange(!entry.checked) },
+            shapes = shapes,
+            enabled = entry.enabled,
+            colors = colors,
+            leadingContent = leadingContent,
+            supportingContent = supportingContent,
+            verticalAlignment = verticalAlignment,
+            trailingContent = {
+                Switch(
+                    checked = entry.checked,
+                    onCheckedChange = null,
+                    enabled = entry.enabled,
+                    thumbContent = {
+                        Icon(
+                            imageVector = when {
+                                entry.checked -> Icons.Default.Check
+                                else -> Icons.Default.Close
+                            },
+                            contentDescription = null,
+                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                        )
+                    }
+                )
+            },
+            modifier = modifier,
+            content = headlineContent,
+        )
+
+        is SettingsEntry.Action -> SegmentedListItem(
+            onClick = entry.onClick,
+            shapes = shapes,
+            colors = colors,
+            leadingContent = leadingContent,
+            supportingContent = supportingContent,
+            verticalAlignment = verticalAlignment,
+            trailingContent = if (entry.navigationIcon != null) {
+                {
+                    Icon(
+                        imageVector = entry.navigationIcon,
+                        contentDescription = null,
+                    )
+                }
+            } else null,
+            modifier = modifier,
+            content = headlineContent,
+        )
+
+        is SettingsEntry.Value -> SegmentedListItem(
+            onClick = entry.onClick ?: {},
+            shapes = shapes,
+            colors = colors,
+            leadingContent = leadingContent,
+            supportingContent = supportingContent,
+            verticalAlignment = verticalAlignment,
+            trailingContent = { Text(text = entry.value) },
+            modifier = modifier,
+            content = headlineContent,
+        )
+
+        is SettingsEntry.Picker -> {
+            var pickerOpen by rememberSaveable { mutableStateOf(false) }
+
+            SegmentedListItem(
+                onClick = { pickerOpen = true },
+                shapes = shapes,
+                colors = colors,
+                leadingContent = leadingContent,
+                supportingContent = supportingContent,
+                verticalAlignment = verticalAlignment,
+                modifier = modifier,
+                content = headlineContent,
+            )
+
+            if (pickerOpen) PickerDialog(
+                title = entry.title,
+                options = entry.options,
+                selectedIndex = entry.selectedIndex,
+                onSelect = { option ->
+                    pickerOpen = false
+                    option.onSelect()
+                },
+                onDismiss = { pickerOpen = false },
+            )
+        }
+    }
+}
+
+@Composable
+private fun PickerDialog(
+    @StringRes title: Int,
+    options: List<SettingsEntry.Picker.Option>,
+    selectedIndex: Int,
+    onSelect: (SettingsEntry.Picker.Option) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(title)) },
+        text = {
+            Column(modifier = Modifier.selectableGroup()) {
+                options.forEachIndexed { index, option ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .minimumInteractiveComponentSize()
+                            .clip(MaterialTheme.shapes.small)
+                            .selectable(
+                                selected = index == selectedIndex,
+                                role = Role.RadioButton,
+                                onClick = { onSelect(option) },
+                            )
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = index == selectedIndex,
+                            onClick = null,
+                        )
+                        Text(
+                            text = option.label.asString(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(start = 16.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+@Composable
+fun SettingsSectionHeader(
+    @StringRes title: Int,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = stringResource(title),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.padding(top = 8.dp, bottom = 4.dp),
+    )
+}

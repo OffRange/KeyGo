@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="settings_title">Settings</string>
+
     <string name="settings_security">Security</string>
     <string name="settings_use_biometrics">Use Biometrics</string>
     <string name="settings_use_biometrics_description">Unlock KeyGo with your fingerprint or face</string>
-    <string name="settings_reset_password">Reset Password</string>
-    <string name="settings_reset_password_description">Change your main password that protects your data</string>
     <string name="settings_autofill">Autofill</string>
     <string name="settings_autofill_description">Fill in your logins in other apps and browsers</string>
     <string name="settings_autofill_finish_setup">Finish setting up autofill</string>
@@ -27,15 +27,5 @@
     <string name="settings_3rd_party_licenses">3rd Party Licenses</string>
     <string name="settings_version">Version</string>
 
-    <string name="change_password_title">Change password</string>
-    <string name="current_password">Current password</string>
-    <string name="new_password">New password</string>
-    <string name="confirm_password">Confirm new password</string>
-    <string name="change_password_action">Change password</string>
-    <string name="biometric_confirm_helper">You\'ll confirm with your fingerprint</string>
-    <string name="reauth_dialog_title">Enter your current password</string>
-    <string name="password_changed">Password changed</string>
-    <string name="change_password_failed">Could not change password</string>
-
-    <string name="cancel">Cancel</string>
+    <string name="account_signed_in">Signed in \u2022 %s</string>
 </resources>

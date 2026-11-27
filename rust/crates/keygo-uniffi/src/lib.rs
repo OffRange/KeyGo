@@ -7,6 +7,7 @@ mod passkey;
 mod sync;
 mod totp;
 mod types;
+mod username;
 mod vault;
 
 uniffi::setup_scaffolding!();

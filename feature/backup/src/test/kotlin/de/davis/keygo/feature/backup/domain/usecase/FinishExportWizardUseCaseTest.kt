@@ -7,7 +7,7 @@ import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.ExportArk
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
@@ -142,7 +142,7 @@ class FinishExportWizardUseCaseTest {
         assertNotNull(wrapped)
         val cipher = assertNotNull(
             keyStoreManager
-                .getOrCreateCipherFor(KeyId.BackupArkKey, CryptographicMode.Decrypt, wrapped.iv)
+                .getOrCreateCipherFor(CipherKeyId.BackupArkKey, CryptographicMode.Decrypt, wrapped.iv)
                 .getOrNull(),
         )
         val recovered = cipher.doFinal(wrapped.data)

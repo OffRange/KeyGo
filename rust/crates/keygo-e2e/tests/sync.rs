@@ -6,8 +6,8 @@ use keygo_api::domain::{Device, RevokeReason};
 use keygo_client::ark_session::ArkSession;
 use keygo_client::sync::testing::{FakeSigner, FakeTokenStore, FixedClock};
 use keygo_client::sync::{
-    Clock, Header, HttpRequest, HttpResponse, StoredSession, SyncClient, SyncError, SystemClock,
-    Transport, TransportError,
+    Clock, Header, HttpRequest, HttpResponse, NetworkError, StoredSession, SyncClient, SyncError,
+    SystemClock, Transport,
 };
 use keygo_core::{AccountRootKey, KeyMaterial, OpaqueKek, Sealed, UserId, Wraps};
 use keygo_dpop::testing::TestSigner;
@@ -23,25 +23,24 @@ struct TowerTransport(AppState);
 
 #[async_trait]
 impl Transport for TowerTransport {
-    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
-        let fail = |e: &dyn std::fmt::Display| TransportError {
-            message: e.to_string(),
-        };
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, NetworkError> {
         let mut built = Request::builder()
             .method(request.method.as_str())
             .uri(&request.url);
         for header in &request.headers {
             built = built.header(
-                HeaderName::try_from(header.name.as_str()).map_err(|e| fail(&e))?,
-                HeaderValue::try_from(header.value.as_str()).map_err(|e| fail(&e))?,
+                HeaderName::try_from(header.name.as_str()).map_err(|_| NetworkError::Other)?,
+                HeaderValue::try_from(header.value.as_str()).map_err(|_| NetworkError::Other)?,
             );
         }
-        let built = built.body(Body::from(request.body)).map_err(|e| fail(&e))?;
+        let built = built
+            .body(Body::from(request.body))
+            .map_err(|_| NetworkError::Other)?;
 
         let response = router(self.0.clone())
             .oneshot(built)
             .await
-            .map_err(|e| fail(&e))?;
+            .map_err(|_| NetworkError::Other)?;
         let status = response.status().as_u16();
         let headers = response
             .headers()
@@ -55,7 +54,7 @@ impl Transport for TowerTransport {
             .into_body()
             .collect()
             .await
-            .map_err(|e| fail(&e))?
+            .map_err(|_| NetworkError::Other)?
             .to_bytes()
             .to_vec();
         Ok(HttpResponse {
@@ -63,6 +62,22 @@ impl Transport for TowerTransport {
             headers,
             body,
         })
+    }
+}
+
+/// Several servers behind one transport, each picked by the origin a request goes to.
+struct ServersTransport(Vec<AppState>);
+
+#[async_trait]
+impl Transport for ServersTransport {
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, NetworkError> {
+        let url = Url::parse(&request.url).map_err(|_| NetworkError::Other)?;
+        let state = self
+            .0
+            .iter()
+            .find(|state| state.public_url.origin() == url.origin())
+            .ok_or(NetworkError::Other)?;
+        TowerTransport(state.clone()).send(request).await
     }
 }
 
@@ -85,11 +100,12 @@ async fn harness(db: &PgPool) -> Harness {
     let device_id = issued.device_id;
 
     let store = Arc::new(FakeTokenStore::new());
-    store.seed(StoredSession {
+    store.seed(StoredSession::signed_in_to(
+        testing::ISS,
         device_id,
-        refresh_token: issued.refresh_token,
-        refresh_expires_at: SystemClock.now_secs() + issued.refresh_expires_in.as_secs(),
-    });
+        issued.refresh_token,
+        SystemClock.now_secs() + issued.refresh_expires_in.as_secs(),
+    ));
     let clock = FixedClock::new(SystemClock.now_secs());
     let client = SyncClient::new(
         Url::parse(testing::ISS).unwrap(),
@@ -369,6 +385,42 @@ async fn registering_while_signed_in_ends_the_old_session(db: PgPool) {
     .await;
     assert!(!status.is_success(), "{status}");
     assert_ne!(h.store.current_refresh_token().unwrap(), h.seed_token);
+}
+
+#[sqlx::test(migrations = "../keygo-server/migrations")]
+async fn registering_on_another_server_ends_the_old_session(db: PgPool) {
+    let h = harness(&db).await;
+    let other = AppState {
+        public_url: Url::parse("http://other.localhost").unwrap(),
+        ..h.state.clone()
+    };
+    let client = SyncClient::new(
+        other.public_url.clone(),
+        Arc::new(ServersTransport(vec![h.state.clone(), other])),
+        Arc::new(FakeSigner::new()),
+        h.store.clone(),
+    )
+    .unwrap();
+    let (ark_session, user_id) = local_account();
+
+    register(&client, &ark_session, user_id, "bob").await;
+
+    let (status, _) = testing::post_with_token(
+        &h.state,
+        &h.prover,
+        "/api/v1/auth/logout",
+        &h.access_token,
+        serde_json::Value::Null,
+    )
+    .await;
+    assert!(
+        !status.is_success(),
+        "the first server's session is revoked: {status}"
+    );
+    assert_eq!(
+        h.store.current().unwrap().server.as_str(),
+        "http://other.localhost/"
+    );
 }
 
 #[sqlx::test(migrations = "../keygo-server/migrations")]

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Debug builds only: lets a dev build reach a local keygo-server over plain HTTP
+    (e.g. http://localhost:8000 through `adb reverse`). Staging and release have no config, so
+    Android's default (cleartext forbidden) applies there. Never move this into src/main.
+-->
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <base-config
+        cleartextTrafficPermitted="true"
+        tools:ignore="InsecureBaseConfiguration" />
+</network-security-config>

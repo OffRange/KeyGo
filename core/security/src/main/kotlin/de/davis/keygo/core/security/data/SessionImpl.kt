@@ -1,12 +1,14 @@
 package de.davis.keygo.core.security.data
 
 import de.davis.keygo.core.security.domain.ExportArk
+import de.davis.keygo.core.security.domain.RawArkSession
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.SessionError
 import de.davis.keygo.core.security.domain.toSessionError
 import de.davis.keygo.core.util.Result
 import de.davisalessandro.keygo.rust.AccountRecord
 import de.davisalessandro.keygo.rust.ArkCredential
+import de.davisalessandro.keygo.rust.ArkSession
 import de.davisalessandro.keygo.rust.ArkSessionException
 import de.davisalessandro.keygo.rust.ArkSessionInterface
 import de.davisalessandro.keygo.rust.NewAccount
@@ -50,6 +52,9 @@ internal class SessionImpl(
     override fun exportArk(): Result<ByteArray, SessionError> = catching { binding.exportArk() }
 
     override fun arkCredential(): ArkCredential = binding.arkCredential()
+
+    @RawArkSession
+    override fun arkSession(): ArkSession = binding as ArkSession
 
     override suspend fun verifyPassword(
         password: String,

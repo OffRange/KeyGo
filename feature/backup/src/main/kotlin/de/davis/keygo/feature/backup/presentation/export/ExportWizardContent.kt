@@ -20,10 +20,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import de.davis.keygo.core.item.domain.model.PasswordScore
+import de.davis.keygo.core.ui.components.Wizard
 import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
 import de.davis.keygo.feature.backup.domain.model.FileFormat
-import de.davis.keygo.feature.backup.presentation.component.Wizard
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardStep
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.export.model.ExportWizardUiState

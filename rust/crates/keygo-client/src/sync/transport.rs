@@ -59,15 +59,22 @@ fn header_names(headers: &[Header]) -> Vec<&str> {
     headers.iter().map(|h| h.name.as_str()).collect()
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error("{message}")]
-pub struct TransportError {
-    pub message: String,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("{self:?}")]
+pub enum NetworkError {
+    UnknownHost,
+    Timeout,
+    Refused,
+    Unreachable,
+    CleartextBlocked,
+    UntrustedCertificate,
+    Tls,
+    Other,
 }
 
 #[async_trait]
 pub trait Transport: Send + Sync {
-    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError>;
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, NetworkError>;
 }
 
 #[cfg(test)]

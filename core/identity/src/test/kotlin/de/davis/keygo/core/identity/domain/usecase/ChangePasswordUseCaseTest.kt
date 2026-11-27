@@ -13,8 +13,8 @@ import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.Reauthentication
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.domain.ExportArk
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.getOrNull
 import de.davis.keygo.core.util.isFailure
@@ -38,6 +38,7 @@ class ChangePasswordUseCaseTest {
         biometricCrypto = biometricCrypto,
         accountRepository = accountRepository,
         session = session,
+        verifyPassword = VerifyPasswordUseCase(session, accountRepository),
     )
 
     /** What the session minted for the seeded account, for round-trip assertions. */
@@ -64,7 +65,7 @@ class ChangePasswordUseCaseTest {
             ),
             biometricWrappedArk = if (withBiometric) {
                 biometricCrypto
-                    .requestWrap(KeyId.BiometricVaultKek) { seal -> seal(biometricArk()) }
+                    .requestWrap(CipherKeyId.BiometricVaultKek) { seal -> seal(biometricArk()) }
                     .assertSuccess()
                     .toBiometricWrappedArk()
             } else null,
@@ -193,7 +194,7 @@ class ChangePasswordUseCaseTest {
             useCase(Reauthentication.Biometric, "new")
 
             val prompt = biometricCrypto.prompts.single()
-            assertEquals(KeyId.BiometricVaultKek, prompt.keyId)
+            assertEquals(CipherKeyId.BiometricVaultKek, prompt.keyId)
             assertEquals(CryptographicMode.Unwrap, prompt.mode)
             assertEquals(BiometricString.NegativeButton.Password, prompt.policy.negativeButton)
         }
@@ -269,7 +270,7 @@ class ChangePasswordUseCaseTest {
     @Test
     fun `an invalidated biometric key is BiometricAuthFailed`() = runTest {
         seedAccount("old", withBiometric = true)
-        biometricCrypto.keyStoreManager.deleteKey(KeyId.BiometricVaultKek)
+        biometricCrypto.keyStoreManager.deleteKey(CipherKeyId.BiometricVaultKek)
 
         val result = useCase(Reauthentication.Biometric, "new")
 

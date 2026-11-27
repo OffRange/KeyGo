@@ -14,6 +14,8 @@ import de.davisalessandro.keygo.rust.RustPasskey
 import de.davisalessandro.keygo.rust.RustPasskeyInterface
 import de.davisalessandro.keygo.rust.TotpService
 import de.davisalessandro.keygo.rust.TotpServiceInterface
+import de.davisalessandro.keygo.rust.UsernameValidator
+import de.davisalessandro.keygo.rust.UsernameValidatorInterface
 import de.davisalessandro.keygo.rust.VaultManager
 import de.davisalessandro.keygo.rust.VaultManagerInterface
 import org.koin.core.annotation.Configuration
@@ -47,4 +49,7 @@ object RustModule {
 
     @Single
     internal fun provideCardFormatter(): CardFormatterInterface = CardFormatter()
+
+    @Single
+    internal fun provideUsernameValidator(): UsernameValidatorInterface = UsernameValidator()
 }

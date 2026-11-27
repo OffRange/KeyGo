@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package de.davis.keygo.core.sync.data.local.model;
+option java_multiple_files = true;
+
+message ProtoSessionStore {
+  ProtoStoredSession session = 1;
+}
+
+message ProtoStoredSession {
+  bytes device_id = 1;
+  bytes user_id = 2;
+  string refresh_token = 3;
+  int64 refresh_token_expires_at = 4;
+  string server_url = 5;
+  string username = 6;
+}

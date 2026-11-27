@@ -131,8 +131,8 @@ Password / Biometric
 
 A scheduled backup runs with no user present, so it cannot reach the ARK the normal way. Scheduling
 one therefore escrows a second copy of the ARK, and the export passphrase alongside it, under
-Keystore aliases that deliberately do **not** require user authentication (`KeyId.BackupArkKey`,
-`KeyId.BackupPassphraseKey`; see `BackupArkUnlocker`).
+Keystore aliases that deliberately do **not** require user authentication (`CipherKeyId.BackupArkKey`,
+`CipherKeyId.BackupPassphraseKey`; see `BackupArkUnlocker`).
 
 This is the one place the "ARK is never readable without authenticating" rule is relaxed, so it
 carries its own rules:

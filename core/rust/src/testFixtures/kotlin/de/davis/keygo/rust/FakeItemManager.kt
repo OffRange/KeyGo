@@ -6,6 +6,7 @@ import de.davisalessandro.keygo.rust.ItemDataAad
 import de.davisalessandro.keygo.rust.ItemKey
 import de.davisalessandro.keygo.rust.ItemManagerInterface
 import java.security.SecureRandom
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * In-memory [ItemManagerInterface] for tests.
@@ -16,7 +17,9 @@ import java.security.SecureRandom
  */
 class FakeItemManager : ItemManagerInterface {
 
-    private val record = mutableMapOf<Key, ByteArray>()
+    // Concurrent: CryptographicScope runs encrypt/decrypt on Dispatchers.Default, and a plain map
+    // can drop an entry written alongside another one, failing that entry's decrypt.
+    private val record = ConcurrentHashMap<Key, ByteArray>()
 
     override fun createNewItemKey(): ItemKey =
         ByteArray(32).also { SecureRandom().nextBytes(it) }

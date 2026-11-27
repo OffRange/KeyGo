@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sync_error_invalid_address">That doesn\'t look like a server address.</string>
+    <string name="sync_error_unknown_host">Couldn\'t find this server. Check the address and your internet connection.</string>
+    <string name="sync_error_timeout">The server didn\'t respond. Is it running and reachable from this network?</string>
+    <string name="sync_error_refused">The server refused the connection. Is the port correct?</string>
+    <string name="sync_error_unreachable">Can\'t reach this server. Check the address.</string>
+    <string name="sync_error_insecure">This server doesn\'t use HTTPS. KeyGo only connects over a secure connection.</string>
+    <string name="sync_error_untrusted_certificate">The server\'s certificate isn\'t trusted. Check the address or the server\'s HTTPS setup.</string>
+    <string name="sync_error_tls_failed">Couldn\'t set up a secure connection. Does the server support HTTPS on this port?</string>
+    <string name="sync_error_redirected">This address redirects elsewhere. Enter the server\'s final address.</string>
+    <string name="sync_error_not_keygo">This isn\'t a KeyGo server.</string>
+    <string name="sync_error_unavailable">The server is up, but KeyGo isn\'t responding. Try again later.</string>
+    <string name="sync_error_server">The server ran into a problem. Try again later.</string>
+    <string name="sync_error_rate_limited">Too many attempts. Wait a moment, then try again.</string>
+    <string name="sync_error_username_taken">This username is taken. Pick another one.</string>
+    <string name="sync_error_username_rejected">This server doesn\'t accept this username.</string>
+    <string name="sync_error_invite_invalid">This invite code isn\'t valid or was already used.</string>
+    <string name="sync_error_invite_required">This server needs an invite code.</string>
+    <string name="sync_error_invalid_credentials">Wrong username or password.</string>
+    <string name="sync_error_signed_out">You were signed out. Sign in again.</string>
+    <string name="sync_error_fresh_auth_required">Confirm your password to continue.</string>
+    <string name="sync_error_account_mismatch">This account belongs to a different vault.</string>
+    <string name="sync_error_vault_locked">Unlock KeyGo, then try again.</string>
+    <string name="sync_error_unknown">Something went wrong. Try again.</string>
+
+    <string name="step_up_title">Confirm it\'s you</string>
+    <string name="step_up_message">This action needs your account password. Enter it to continue.</string>
+    <string name="step_up_password">Account password</string>
+    <string name="step_up_confirm">Confirm</string>
+</resources>

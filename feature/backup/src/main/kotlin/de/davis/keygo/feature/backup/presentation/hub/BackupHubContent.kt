@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import de.davis.keygo.core.ui.components.IconBadge
 import de.davis.keygo.core.ui.theme.KeyGoTheme
 import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
@@ -53,7 +54,6 @@ import de.davis.keygo.feature.backup.domain.model.BackupFailureReason
 import de.davis.keygo.feature.backup.domain.model.DispatchedBackup
 import de.davis.keygo.feature.backup.domain.model.ExportProgress
 import de.davis.keygo.feature.backup.domain.model.FileFormat
-import de.davis.keygo.feature.backup.presentation.component.IconBadge
 import de.davis.keygo.feature.backup.presentation.component.segmentContainerColor
 import de.davis.keygo.feature.backup.presentation.displayName
 import de.davis.keygo.feature.backup.presentation.hub.model.BackupGroup

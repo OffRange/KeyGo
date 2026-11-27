@@ -8,16 +8,16 @@ import de.davis.keygo.core.identity.domain.model.Account
 import de.davis.keygo.core.identity.domain.model.ChangePasswordError
 import de.davis.keygo.core.identity.domain.model.PasswordWrappedArk
 import de.davis.keygo.core.identity.domain.model.Reauthentication
+import de.davis.keygo.core.identity.domain.model.VerifyPasswordError
 import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.SessionError
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.ResultBinding
 import de.davis.keygo.core.util.asResult
 import de.davis.keygo.core.util.resultBinding
-import de.davisalessandro.keygo.rust.WrappedKeyBlob
 import org.koin.core.annotation.Single
 
 @Single
@@ -25,6 +25,7 @@ class ChangePasswordUseCase(
     private val biometricCrypto: BiometricCrypto,
     private val accountRepository: AccountRepository,
     private val session: Session,
+    private val verifyPassword: VerifyPasswordUseCase,
 ) {
 
     suspend operator fun invoke(
@@ -35,7 +36,7 @@ class ChangePasswordUseCase(
             ?: return Result.Failure(ChangePasswordError.ActiveAccountNotFound)
 
         when (reauthentication) {
-            is Reauthentication.Password -> passwordAuthenticationPath(reauthentication, account)
+            is Reauthentication.Password -> passwordAuthenticationPath(reauthentication)
             is Reauthentication.Biometric -> biometricAuthenticationPath(account)
         }
 
@@ -60,21 +61,12 @@ class ChangePasswordUseCase(
 
     private suspend fun ResultBinding<ChangePasswordError>.passwordAuthenticationPath(
         reauthentication: Reauthentication.Password,
-        account: Account,
     ) {
-        session.verifyPassword(
-            password = reauthentication.currentPassword,
-            salt = account.passwordWrappedArk.salt,
-            wrapped = WrappedKeyBlob(
-                ciphertext = account.passwordWrappedArk.key,
-                nonce = account.passwordWrappedArk.keyIV,
-            ),
-            userId = account.id,
-        ).bind {
+        verifyPassword(reauthentication.currentPassword).bind {
             when (it) {
-                is SessionError.Derivation -> ChangePasswordError.KeyDerivationFailed
-                SessionError.Locked -> ChangePasswordError.ActiveAccountNotFound
-                else -> ChangePasswordError.IncorrectPassword
+                VerifyPasswordError.ActiveAccountNotFound -> ChangePasswordError.ActiveAccountNotFound
+                VerifyPasswordError.IncorrectPassword -> ChangePasswordError.IncorrectPassword
+                VerifyPasswordError.KeyDerivationFailed -> ChangePasswordError.KeyDerivationFailed
             }
         }
     }
@@ -90,7 +82,7 @@ class ChangePasswordUseCase(
 
         try {
             unwrappedArk = biometricCrypto.requestUnwrap(
-                keyId = KeyId.BiometricVaultKek,
+                keyId = CipherKeyId.BiometricVaultKek,
                 cryptographicData = CryptographicData(
                     data = wrappedKey.key,
                     iv = wrappedKey.keyIV

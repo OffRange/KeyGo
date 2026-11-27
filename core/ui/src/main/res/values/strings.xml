@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KeyGo</string>
+    <string name="app_name" translatable="false">KeyGo</string>
 
     <string name="create_new_item">Create new Item</string>
 
@@ -15,4 +15,6 @@
     <string name="password_does_not_match">Password does not match</string>
 
     <string name="add">Add</string>
+
+    <string name="cancel">Cancel</string>
 </resources>

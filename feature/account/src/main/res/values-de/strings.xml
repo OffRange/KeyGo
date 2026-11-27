@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_security">Sicherheit</string>
+    <string name="settings_reset_password">Hauptpasswort ändern</string>
+    <string name="settings_reset_password_description">Wird zum Entsperren von KeyGo verwendet</string>
+    <string name="settings_reset_password_w_server_description">Wird zum Entsperren von KeyGo und zur Anmeldung am Server verwendet</string>
+
+    <string name="account">Account</string>
+    <string name="account_local_only">Nur auf diesem Gerät</string>
+    <string name="account_not_connected">Mit keinem Server verbunden</string>
+    <string name="account_connect_to_server">Mit einem Server verbinden</string>
+    <string name="account_connect_subtitle">Speichere eine verschlüsselte Kopie deiner Daten und nutze sie auf anderen Geräten.</string>
+    <string name="account_e2e">Ende-zu-Ende-verschlüsselt. Der Server sieht weder Daten noch Passwort.</string>
+    <string name="account_offline_first">Offline nutzbar. Entsperren klappt auch ohne Verbindung zum Server.</string>
+    <string name="account_self_hostable">Hoste deinen eigenen Server oder nutze einen von jemandem, dem du vertraust.</string>
+    <string name="account_scan_invite">Einladung scannen</string>
+    <string name="account_connect">Verbinden</string>
+
+    <string name="server">Server</string>
+
+    <string name="back">Zurück</string>
+
+    <string name="change_password_title">Passwort ändern</string>
+    <string name="current_password">Aktuelles Passwort</string>
+    <string name="new_password">Neues Passwort</string>
+    <string name="confirm_password">Neues Passwort bestätigen</string>
+    <string name="change_password_action">Passwort ändern</string>
+    <string name="biometric_confirm_helper">Du bestätigst mit deinem Fingerabdruck</string>
+    <string name="reauth_dialog_title">Gib dein aktuelles Passwort ein</string>
+    <string name="password_changed">Passwort geändert</string>
+    <string name="change_password_failed">Passwort konnte nicht geändert werden</string>
+
+    <string name="recovery_key">Recovery Key</string>
+    <string name="delete_account">Account löschen</string>
+
+    <string name="your_devices">Deine Geräte</string>
+    <plurals name="device_count">
+        <item quantity="one">%1$d Gerät \u2022 %2$d angemeldet</item>
+        <item quantity="other">%1$d Geräte \u2022 %2$d angemeldet</item>
+    </plurals>
+    <string name="devices_load_failed">Geräte konnten nicht geladen werden</string>
+    <string name="devices_refresh_failed">Geräte konnten nicht aktualisiert werden</string>
+    <string name="devices_this_device">Dieses Gerät</string>
+    <string name="devices_other_devices">Andere Geräte</string>
+    <string name="device_active_now">Gerade aktiv</string>
+    <string name="device_active_ago">Aktiv %1$s</string>
+    <string name="device_signed_out">Abgemeldet</string>
+
+    <string name="sign_out">Abmelden</string>
+    <string name="logout_title">Abmelden?</string>
+    <string name="logout_message">Deine Einträge bleiben auf diesem Gerät und funktionieren weiter offline. Änderungen werden erst wieder synchronisiert, wenn du dich anmeldest.</string>
+    <string name="logout_failed">Abmelden hat nicht geklappt. Du bist auf diesem Gerät noch angemeldet.</string>
+    <string name="retry">Erneut versuchen</string>
+
+    <string name="continue_step">Weiter</string>
+    <string name="create_account">Account erstellen</string>
+
+    <string name="server_address">Serveradresse</string>
+
+    <string name="connect_server_which_title">Welcher Server?</string>
+    <string name="connect_server_which_description">Gib die Adresse ein, die du von der Person bekommen hast, die den Server betreibt.</string>
+
+    <string name="connect_server_address_helper">KeyGo prüft den Server, bevor etwas gesendet wird.</string>
+    <string name="connect_server_address_not_an_origin">Gib die Adresse des Servers ohne Pfad ein, etwa vault.example.org.</string>
+    <string name="connect_server_found">KeyGo-Server gefunden</string>
+    <string name="connect_server_version">Version %1$s</string>
+    <string name="connect_server_invite_only">Nur mit Einladung</string>
+    <string name="connect_server_open_signups">Offene Registrierung</string>
+    <string name="connect_server_scan_invite">Hast du eine Einladung? Scannen</string>
+
+    <string name="sign_in_or_out_title">Hast du einen Account auf diesem Server?</string>
+    <string name="sign_in_or_out_keygo_server">KeyGo-Server</string>
+    <string name="sign_in">Anmelden</string>
+    <string name="sign_in_description">Ich nutze KeyGo mit diesem Server schon auf einem anderen Gerät.</string>
+    <string name="create_account_description">Ich bin zum ersten Mal auf diesem Server.</string>
+    <string name="create_account_invite_description">Ich bin zum ersten Mal hier und habe eine Einladung von der Person, die den Server betreibt.</string>
+
+    <string name="connect_server_retry">Erneut versuchen</string>
+
+    <string name="confirm_server_use_another">Anderen Server nutzen</string>
+
+    <string name="username">Benutzername</string>
+    <string name="invite_code">Einladungscode</string>
+    <string name="choose_username_title">Wähle einen Benutzernamen</string>
+    <string name="choose_username_description">Keine E-Mail nötig. Du meldest dich mit diesem Namen bei %1$s an.</string>
+    <string name="choose_username_helper">Erlaubt: %1$s</string>
+    <string name="invite_code_helper">Jeder Code funktioniert nur einmal.</string>
+    <string name="invite_code_from_link_helper">Aus deinem Einladungslink übernommen. Jeder Code funktioniert nur einmal.</string>
+    <string name="username_too_short">Verwende mindestens %1$d Zeichen.</string>
+    <string name="username_too_long">Verwende höchstens %1$d Zeichen.</string>
+    <string name="username_invalid_character">„%1$s“ ist nicht erlaubt.</string>
+    <string name="username_invalid_start">Beginne mit einem Buchstaben oder einer Ziffer.</string>
+    <string name="username_invalid_end">Ende mit einem Buchstaben oder einer Ziffer.</string>
+    <string name="username_consecutive_separators">Punkte, Binde- und Unterstriche dürfen nicht aufeinanderfolgen.</string>
+    <string name="username_only_digits">Füge mindestens einen Buchstaben hinzu.</string>
+    <string name="username_reserved">Dieser Name ist reserviert. Wähle einen anderen.</string>
+
+    <string name="confirm_account_password_title">Bestätige dein Passwort</string>
+    <string name="confirm_account_password_description">Dein Konto nutzt das Passwort, mit dem du KeyGo bereits entsperrst. Am Entsperren ändert sich nichts.</string>
+    <string name="confirm_account_password_label">KeyGo-Passwort</string>
+    <string name="sign_in_screen_description">Nutze den Benutzernamen und das Passwort deines Accounts auf %1$s.</string>
+    <string name="sign_in_password_label">Passwort</string>
+
+    <string name="confirm_account_password_failed">Dein Passwort konnte nicht geprüft werden. Versuch es noch einmal.</string>
+</resources>

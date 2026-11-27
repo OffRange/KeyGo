@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import de.davis.keygo.core.ui.components.Wizard
 import de.davis.keygo.feature.backup.R
 import de.davis.keygo.feature.backup.domain.model.BackupDestination
 import de.davis.keygo.feature.backup.domain.model.CsvColumnType
@@ -26,7 +27,6 @@ import de.davis.keygo.feature.backup.domain.model.ImportError
 import de.davis.keygo.feature.backup.domain.model.ImportProgress
 import de.davis.keygo.feature.backup.domain.model.ImportSummary
 import de.davis.keygo.feature.backup.presentation.component.BackupFileChooser
-import de.davis.keygo.feature.backup.presentation.component.Wizard
 import de.davis.keygo.feature.backup.presentation.import.model.ImportWizardStep
 import de.davis.keygo.feature.backup.presentation.import.model.ImportWizardUiEvent
 import de.davis.keygo.feature.backup.presentation.import.model.ImportWizardUiState

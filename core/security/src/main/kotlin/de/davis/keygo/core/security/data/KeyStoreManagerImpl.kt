@@ -8,12 +8,19 @@ import android.security.keystore.UserNotAuthenticatedException
 import android.util.Log
 import androidx.annotation.RequiresApi
 import de.davis.keygo.core.security.domain.KeyStoreManager
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.CryptographicMode
 import de.davis.keygo.core.security.domain.model.KeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
+import de.davis.keygo.core.security.domain.model.SigningKeyId
 import de.davis.keygo.core.util.Result
 import org.koin.core.annotation.Single
+import java.security.KeyPair
+import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.PublicKey
+import java.security.Signature
+import java.security.spec.ECGenParameterSpec
 import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -29,8 +36,10 @@ internal class KeyStoreManagerImpl : KeyStoreManager {
         }
     }
 
+    private val signingKeyLock = Any()
+
     override fun getOrCreateCipherFor(
-        keyId: KeyId,
+        keyId: CipherKeyId,
         cryptographicMode: CryptographicMode,
         iv: ByteArray?,
     ): Result<Cipher, KeyStoreManagerError> = runCatching {
@@ -55,19 +64,32 @@ internal class KeyStoreManagerImpl : KeyStoreManager {
 
         cipher.init(cipherMode, key, params)
         cipher
-    }.fold(
-        onSuccess = { Result.Success(it) },
-        onFailure = {
-            Log.e(TAG, "Could not initialise a cipher for $keyId", it)
-            Result.Failure(keyStoreManagerErrorFrom(it))
-        },
-    )
+    }.toKeyStoreResult { "Could not initialise a cipher for $keyId" }
+
+    override fun getOrCreatePublicKey(
+        keyId: SigningKeyId,
+    ): Result<PublicKey, KeyStoreManagerError> = runCatching {
+        getOrCreateKeyPair(keyId).public
+    }.toKeyStoreResult { "Could not read the public key of $keyId" }
+
+    override fun sign(
+        keyId: SigningKeyId,
+        message: ByteArray,
+    ): Result<ByteArray, KeyStoreManagerError> = runCatching {
+        // A fresh Signature per call: the instance is stateful and not thread-safe.
+        Signature.getInstance(SIGNATURE_ALGORITHM).run {
+            initSign(getOrCreateKeyPair(keyId).private)
+            update(message)
+            sign()
+        }
+    }.toKeyStoreResult { "Could not sign with $keyId" }
 
     override fun deleteKey(keyId: KeyId) {
         if (keyStore.containsAlias(keyId.id)) keyStore.deleteEntry(keyId.id)
     }
 
-    private fun createKeyFor(keyId: KeyId): SecretKey {
+    // ------------------ CipherKey ------------------
+    private fun createKeyFor(keyId: CipherKeyId): SecretKey {
         val spec = KeyGenParameterSpec.Builder(
             keyId.id,
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
@@ -75,12 +97,7 @@ internal class KeyStoreManagerImpl : KeyStoreManager {
             setBlockModes(BLOCK_MODE)
             setEncryptionPaddings(PADDING_MODE)
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) setUnlockedDeviceRequired(true)
-
-            setUserAuthenticationRequired(keyId.needsAuthentication)
-
-            // TODO: maybe add a setting to set that flag
-            setInvalidatedByBiometricEnrollment(true)
+            applyAccessPolicy(keyId)
 
             setRandomizedEncryptionRequired(true)
 
@@ -94,16 +111,6 @@ internal class KeyStoreManagerImpl : KeyStoreManager {
             //             PackageManager.FEATURE_STRONGBOX_KEYSTORE
             //         )
             //     )
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                setUserAuthenticationParameters(
-                    INVALIDATE_IMMEDIATE_R,
-                    KeyProperties.AUTH_BIOMETRIC_STRONG
-                )
-            else
-                @Suppress("DEPRECATION")
-                setUserAuthenticationValidityDurationSeconds(INVALIDATE_IMMEDIATE)
-
         }.build()
 
         val generator = KeyGenerator.getInstance(ALGORITHM, "AndroidKeyStore")
@@ -111,6 +118,60 @@ internal class KeyStoreManagerImpl : KeyStoreManager {
 
         return generator.generateKey()
     }
+
+
+    // ------------------ SigningKey ------------------
+    private fun getOrCreateKeyPair(keyId: SigningKeyId): KeyPair = synchronized(signingKeyLock) {
+        when (val entry = keyStore.getEntry(keyId.id, null)) {
+            is KeyStore.PrivateKeyEntry -> KeyPair(entry.certificate.publicKey, entry.privateKey)
+            null -> createKeyPairFor(keyId)
+            else -> error("$keyId is not a key pair")
+        }
+    }
+
+    private fun createKeyPairFor(keyId: SigningKeyId): KeyPair {
+        val spec = KeyGenParameterSpec.Builder(
+            keyId.id,
+            KeyProperties.PURPOSE_SIGN
+        ).apply {
+            setAlgorithmParameterSpec(ECGenParameterSpec(EC_CURVE))
+            setDigests(KeyProperties.DIGEST_SHA256)
+
+            applyAccessPolicy(keyId)
+        }.build()
+
+        val generator =
+            KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore")
+        generator.initialize(spec)
+
+        return generator.generateKeyPair()
+    }
+
+    private fun KeyGenParameterSpec.Builder.applyAccessPolicy(keyId: KeyId) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) setUnlockedDeviceRequired(true)
+
+        setUserAuthenticationRequired(keyId.needsAuthentication)
+        setInvalidatedByBiometricEnrollment(keyId.needsAuthentication)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+            setUserAuthenticationParameters(
+                INVALIDATE_IMMEDIATE_R,
+                KeyProperties.AUTH_BIOMETRIC_STRONG
+            )
+        else
+            @Suppress("DEPRECATION")
+            setUserAuthenticationValidityDurationSeconds(INVALIDATE_IMMEDIATE)
+    }
+
+    private inline fun <T> kotlin.Result<T>.toKeyStoreResult(
+        message: () -> String,
+    ): Result<T, KeyStoreManagerError> = fold(
+        onSuccess = { Result.Success(it) },
+        onFailure = {
+            Log.e(TAG, message(), it)
+            Result.Failure(keyStoreManagerErrorFrom(it))
+        },
+    )
 
     companion object {
         private const val TAG = "KeyStoreManager"
@@ -120,6 +181,9 @@ internal class KeyStoreManagerImpl : KeyStoreManager {
         private const val PADDING_MODE = KeyProperties.ENCRYPTION_PADDING_NONE
 
         private const val T_LEN = 128
+
+        private const val EC_CURVE = "secp256r1"
+        private const val SIGNATURE_ALGORITHM = "SHA256withECDSA"
 
 
         private const val INVALIDATE_IMMEDIATE = -1

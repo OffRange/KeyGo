@@ -10,7 +10,6 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Update
@@ -19,27 +18,27 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import de.davis.keygo.core.security.domain.model.LockInfo
+import de.davis.keygo.core.ui.components.settings.SectionScope
+import de.davis.keygo.core.ui.components.settings.SettingsList
 import de.davis.keygo.core.util.presentation.UIText
 import de.davis.keygo.core.util.presentation.UIText.Companion.PluralsString
 import de.davis.keygo.core.util.presentation.UIText.Companion.ResourceString
 import de.davis.keygo.feature.settings.R
-import de.davis.keygo.feature.settings.presentation.component.SectionScope
-import de.davis.keygo.feature.settings.presentation.component.SettingsList
+import de.davis.keygo.feature.settings.presentation.component.AccountCard
 
 @Composable
 internal fun SettingsContent(
     state: SettingsUiState,
     onEvent: (SettingsUiEvent) -> Unit,
 ) {
-    val defaultColors = ListItemDefaults.segmentedColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        leadingContentColor = MaterialTheme.colorScheme.primaryContainer,
-    )
     val warningColors = ListItemDefaults.segmentedColors(
         containerColor = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -50,6 +49,13 @@ internal fun SettingsContent(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(text = stringResource(R.string.settings_title))
+                },
+            )
+        }
     ) { innerPadding ->
         SettingsList(
             modifier = Modifier
@@ -57,20 +63,19 @@ internal fun SettingsContent(
                 .padding(horizontal = 8.dp),
             contentPadding = innerPadding,
         ) {
-            section(title = R.string.settings_security) {
-                action(
-                    title = R.string.settings_reset_password,
-                    icon = Icons.Default.LockReset,
-                    supporting = ResourceString(R.string.settings_reset_password_description),
-                    colors = defaultColors,
-                    onClick = { onEvent(SettingsUiEvent.ResetPassword) },
+            custom(key = "account") {
+                AccountCard(
+                    state = state.serverLink,
+                    onClick = { onEvent(SettingsUiEvent.OpenAccount) },
+                    modifier = Modifier.padding(vertical = 16.dp)
                 )
+            }
 
+            section(title = R.string.settings_security) {
                 if (state.biometricsAvailable) toggle(
                     title = R.string.settings_use_biometrics,
                     icon = Icons.Default.Fingerprint,
                     supporting = ResourceString(R.string.settings_use_biometrics_description),
-                    colors = defaultColors,
                     checked = state.biometricsEnabled,
                     enabled = !state.biometricsUpdating,
                     onCheckedChange = { onEvent(SettingsUiEvent.SetBiometrics(it)) },
@@ -80,7 +85,6 @@ internal fun SettingsContent(
                     title = R.string.settings_autofill,
                     icon = Icons.Default.Password,
                     supporting = ResourceString(R.string.settings_autofill_description),
-                    colors = defaultColors,
                     checked = state.autofillEnabled,
                     onCheckedChange = { onEvent(SettingsUiEvent.SetAutofill(it)) },
                 )
@@ -90,7 +94,6 @@ internal fun SettingsContent(
                 picker(
                     title = R.string.settings_auto_lock,
                     icon = Icons.Default.Lock,
-                    colors = defaultColors,
                     selected = state.lockTimeout,
                     options = LockInfo.Timeout.entries,
                     label = { it.label },
@@ -103,7 +106,6 @@ internal fun SettingsContent(
                     title = R.string.settings_backup_and_restore,
                     icon = Icons.Default.Backup,
                     supporting = lastBackupText(state.lastBackupAt),
-                    colors = defaultColors,
                     onClick = { onEvent(SettingsUiEvent.OpenBackup) },
                 )
             }
@@ -112,7 +114,6 @@ internal fun SettingsContent(
                 action(
                     title = R.string.settings_3rd_party_licenses,
                     icon = Icons.Default.Code,
-                    colors = defaultColors,
                     onClick = { onEvent(SettingsUiEvent.LibrariesClicked) },
                 )
 
@@ -120,7 +121,6 @@ internal fun SettingsContent(
                     title = R.string.settings_report_issue,
                     icon = Icons.Default.BugReport,
                     navigationIcon = Icons.AutoMirrored.Default.OpenInNew,
-                    colors = defaultColors,
                     onClick = { onEvent(SettingsUiEvent.ReportIssue) }
                 )
 
@@ -128,7 +128,6 @@ internal fun SettingsContent(
                     title = R.string.settings_version,
                     value = state.version,
                     icon = Icons.Default.Update,
-                    colors = defaultColors,
                 )
             }
         }

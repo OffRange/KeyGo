@@ -17,7 +17,7 @@ import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.ExportArk
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.util.assertFailure
 import de.davis.keygo.core.util.assertSuccess
 import de.davis.keygo.core.util.getOrNull
@@ -75,7 +75,7 @@ class EnableBiometricsUseCaseTest {
         val ark = checkNotNull(session.exportArk().getOrNull())
         seedAccount(
             biometricWrappedArk = biometricCrypto
-                .requestWrap(KeyId.BiometricVaultKek) { seal -> seal(ark) }
+                .requestWrap(CipherKeyId.BiometricVaultKek) { seal -> seal(ark) }
                 .assertSuccess()
                 .toBiometricWrappedArk(),
         )
@@ -85,7 +85,7 @@ class EnableBiometricsUseCaseTest {
 
     private suspend fun opensToLiveArk(wrapped: BiometricWrappedArk): Boolean {
         val recovered = biometricCrypto.requestUnwrap(
-            keyId = KeyId.BiometricVaultKek,
+            keyId = CipherKeyId.BiometricVaultKek,
             cryptographicData = CryptographicData(data = wrapped.key, iv = wrapped.keyIV),
         ).getOrNull() ?: return false
         return session.verifyArk(recovered.encoded).assertSuccess()
@@ -109,7 +109,7 @@ class EnableBiometricsUseCaseTest {
         enableBiometrics(policy)
 
         val prompt = biometricCrypto.prompts.single()
-        assertEquals(KeyId.BiometricVaultKek, prompt.keyId)
+        assertEquals(CipherKeyId.BiometricVaultKek, prompt.keyId)
         assertEquals(CryptographicMode.Wrap, prompt.mode)
         assertEquals(policy, prompt.policy)
     }
@@ -205,11 +205,11 @@ class EnableBiometricsUseCaseTest {
 
     @Test
     fun `enrolling without an account leaves the keystore alone`() = runTest {
-        keyStoreManager.getOrCreateCipherFor(KeyId.BiometricVaultKek, CryptographicMode.Wrap)
+        keyStoreManager.getOrCreateCipherFor(CipherKeyId.BiometricVaultKek, CryptographicMode.Wrap)
 
         enableBiometrics().assertFailure()
 
-        assertTrue(KeyId.BiometricVaultKek in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BiometricVaultKek in keyStoreManager.keys)
     }
 
     @Test
@@ -226,7 +226,7 @@ class EnableBiometricsUseCaseTest {
     @Test
     fun `a failed enrollment leaves the stored enrollment intact`() = runTest {
         seedEnrolledAccount()
-        val inUse = keyStoreManager.keys.getValue(KeyId.BiometricVaultKek)
+        val inUse = keyStoreManager.keys.getValue(CipherKeyId.BiometricVaultKek)
         val before = accountRepository.getOrNull()!!.biometricWrappedArk!!
         // The prompt fails, as a user declining it would. The stored ARK is still wrapped under
         // this key, so taking it down here would strand an enrollment that works.
@@ -234,7 +234,7 @@ class EnableBiometricsUseCaseTest {
 
         enableBiometrics().assertFailure()
 
-        assertSame(inUse, keyStoreManager.keys[KeyId.BiometricVaultKek])
+        assertSame(inUse, keyStoreManager.keys[CipherKeyId.BiometricVaultKek])
         val after = assertNotNull(accountRepository.getOrNull()?.biometricWrappedArk)
         assertContentEquals(before.key, after.key)
         biometricCrypto.promptFailure = null
@@ -244,11 +244,11 @@ class EnableBiometricsUseCaseTest {
     @Test
     fun `enrolling again while enrolled rewraps under the key already in use`() = runTest {
         seedEnrolledAccount()
-        val inUse = keyStoreManager.keys.getValue(KeyId.BiometricVaultKek)
+        val inUse = keyStoreManager.keys.getValue(CipherKeyId.BiometricVaultKek)
 
         enableBiometrics().assertSuccess()
 
-        assertSame(inUse, keyStoreManager.keys[KeyId.BiometricVaultKek])
+        assertSame(inUse, keyStoreManager.keys[CipherKeyId.BiometricVaultKek])
         assertTrue(opensToLiveArk(accountRepository.getOrNull()!!.biometricWrappedArk!!))
     }
 
@@ -260,25 +260,25 @@ class EnableBiometricsUseCaseTest {
     @Test
     fun `enrolling from an unenrolled account drops the key left behind`() = runTest {
         seedAccount()
-        keyStoreManager.getOrCreateCipherFor(KeyId.BiometricVaultKek, CryptographicMode.Wrap)
+        keyStoreManager.getOrCreateCipherFor(CipherKeyId.BiometricVaultKek, CryptographicMode.Wrap)
         // The prompt fails afterwards, so what is left on the keystore is what enrollment decided
         // to start from: nothing.
         biometricCrypto.promptFailure = BiometricAuthError.Declined
 
         enableBiometrics()
 
-        assertFalse(KeyId.BiometricVaultKek in keyStoreManager.keys)
+        assertFalse(CipherKeyId.BiometricVaultKek in keyStoreManager.keys)
     }
 
     @Test
     fun `enrolling from an unenrolled account wraps under a fresh key`() = runTest {
         seedAccount()
-        keyStoreManager.getOrCreateCipherFor(KeyId.BiometricVaultKek, CryptographicMode.Wrap)
-        val leftBehind = keyStoreManager.keys.getValue(KeyId.BiometricVaultKek)
+        keyStoreManager.getOrCreateCipherFor(CipherKeyId.BiometricVaultKek, CryptographicMode.Wrap)
+        val leftBehind = keyStoreManager.keys.getValue(CipherKeyId.BiometricVaultKek)
 
         enableBiometrics().assertSuccess()
 
-        assertNotSame(leftBehind, keyStoreManager.keys[KeyId.BiometricVaultKek])
+        assertNotSame(leftBehind, keyStoreManager.keys[CipherKeyId.BiometricVaultKek])
         assertTrue(opensToLiveArk(accountRepository.getOrNull()!!.biometricWrappedArk!!))
     }
 }

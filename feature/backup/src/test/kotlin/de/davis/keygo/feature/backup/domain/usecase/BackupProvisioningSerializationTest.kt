@@ -3,7 +3,7 @@ package de.davis.keygo.feature.backup.domain.usecase
 import de.davis.keygo.core.security.FakeSession
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.feature.backup.FakeBackupArkKeyStore
 import de.davis.keygo.feature.backup.FakeBackupJobRepository
 import de.davis.keygo.feature.backup.FakeBackupScheduler
@@ -107,8 +107,8 @@ class BackupProvisioningSerializationTest {
         runCurrent()
 
         assertNotNull(arkKeyStore.load())
-        assertTrue(KeyId.BackupArkKey in keyStoreManager.keys)
-        assertTrue(KeyId.BackupPassphraseKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupArkKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupPassphraseKey in keyStoreManager.keys)
 
         // Release provisioning: it writes B's live record and drops the lock, then cleanup runs and,
         // seeing B live, spares the escrow and both aliases.
@@ -116,7 +116,7 @@ class BackupProvisioningSerializationTest {
         joinAll(provisioning, cleaning)
 
         assertNotNull(arkKeyStore.load())
-        assertTrue(KeyId.BackupArkKey in keyStoreManager.keys)
-        assertTrue(KeyId.BackupPassphraseKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupArkKey in keyStoreManager.keys)
+        assertTrue(CipherKeyId.BackupPassphraseKey in keyStoreManager.keys)
     }
 }

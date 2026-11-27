@@ -5,7 +5,7 @@ import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.crypto.suspendDoFinal
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.useArk
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
@@ -99,7 +99,7 @@ class FinishExportWizardUseCase(
         passphrase: String,
     ): Result<CryptographicData, FinishExportWizardError> = resultBinding {
         val cipher = keyStoreManager.getOrCreateCipherFor(
-            keyId = KeyId.BackupPassphraseKey,
+            keyId = CipherKeyId.BackupPassphraseKey,
             cryptographicMode = CryptographicMode.Encrypt,
         ).bind { FinishExportWizardError.CryptoFailed }
 
@@ -113,7 +113,7 @@ class FinishExportWizardUseCase(
     private suspend fun provisionBackupArk() = resultBinding {
         val escrowed = session.useArk { ark ->
             val cipher = keyStoreManager.getOrCreateCipherFor(
-                keyId = KeyId.BackupArkKey,
+                keyId = CipherKeyId.BackupArkKey,
                 cryptographicMode = CryptographicMode.Encrypt,
             ).bind { FinishExportWizardError.CryptoFailed }
 

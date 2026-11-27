@@ -2,8 +2,10 @@ use super::client::SyncClient;
 use super::signer::{SharedSigner, SignError};
 use super::state::Clock;
 use super::tokens::{StoredSession, TokenStore, TokenStoreError};
-use super::transport::{Header, HttpRequest, HttpResponse, Transport, TransportError};
+use super::transport::{Header, HttpRequest, HttpResponse, NetworkError, Transport};
 use async_trait::async_trait;
+use keygo_api::domain::{RefreshToken, Username};
+use keygo_core::{DeviceId, UserId};
 use keygo_dpop::testing::TestSigner;
 use keygo_dpop::{DpopSigner, Signature, VerifyingKey};
 use keygo_opaque::client::ClientRegistration;
@@ -51,7 +53,7 @@ pub fn error_body(code: &str) -> Vec<u8> {
     serde_json::to_vec(&serde_json::json!({"code": code, "message": "m"})).unwrap()
 }
 
-type Reply = Box<dyn FnOnce(&HttpRequest) -> Result<HttpResponse, TransportError> + Send>;
+type Reply = Box<dyn FnOnce(&HttpRequest) -> Result<HttpResponse, NetworkError> + Send>;
 
 pub struct FakeTransport {
     script: Mutex<VecDeque<Reply>>,
@@ -97,14 +99,13 @@ impl FakeTransport {
         });
     }
 
-    pub fn push_network_error(&self, message: &str) {
-        let message = message.to_owned();
-        self.reply(move |_| Err(TransportError { message }));
+    pub fn push_network_failure(&self, kind: NetworkError) {
+        self.reply(move |_| Err(kind));
     }
 
     fn reply(
         &self,
-        reply: impl FnOnce(&HttpRequest) -> Result<HttpResponse, TransportError> + Send + 'static,
+        reply: impl FnOnce(&HttpRequest) -> Result<HttpResponse, NetworkError> + Send + 'static,
     ) {
         self.script.lock().unwrap().push_back(Box::new(reply));
     }
@@ -116,7 +117,7 @@ impl FakeTransport {
 
 #[async_trait]
 impl Transport for FakeTransport {
-    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, NetworkError> {
         // Lets concurrent tests really interleave.
         tokio::task::yield_now().await;
         let reply = self
@@ -147,6 +148,14 @@ impl FakeTokenStore {
         *self.stored.lock().unwrap() = Some(session);
     }
 
+    pub fn current(&self) -> Option<StoredSession> {
+        self.stored
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(StoredSession::duplicate)
+    }
+
     pub fn current_refresh_token(&self) -> Option<String> {
         self.stored
             .lock()
@@ -169,8 +178,27 @@ impl FakeTokenStore {
 }
 
 impl StoredSession {
+    pub fn signed_in_to(
+        server: &str,
+        device_id: DeviceId,
+        refresh_token: RefreshToken,
+        refresh_expires_at: u64,
+    ) -> Self {
+        Self {
+            server: Url::parse(server).unwrap(),
+            user_id: UserId::random(),
+            username: Username::parse("ada").unwrap(),
+            device_id,
+            refresh_token,
+            refresh_expires_at,
+        }
+    }
+
     pub(super) fn duplicate(&self) -> Self {
         Self {
+            server: self.server.clone(),
+            user_id: self.user_id,
+            username: self.username.clone(),
             device_id: self.device_id,
             refresh_token: self
                 .refresh_token

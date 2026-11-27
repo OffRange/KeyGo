@@ -5,7 +5,7 @@ import de.davis.keygo.core.biometrics.FakeBiometricAvailabilityRepository
 import de.davis.keygo.core.biometrics.domain.model.BiometricAuthError
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davis.keygo.core.util.assertFailure
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -40,11 +40,11 @@ class BiometricCryptoImplTest {
     private fun resumedActivity() = Robolectric.buildActivity(FragmentActivity::class.java).setup()
 
     private suspend fun unwrap() = crypto.requestUnwrap(
-        keyId = KeyId.BiometricVaultKek,
+        keyId = CipherKeyId.BiometricVaultKek,
         cryptographicData = CryptographicData(data = ByteArray(48), iv = ByteArray(12)),
     )
 
-    private suspend fun wrap() = crypto.requestWrap(keyId = KeyId.BiometricVaultKek) { seal ->
+    private suspend fun wrap() = crypto.requestWrap(keyId = CipherKeyId.BiometricVaultKek) { seal ->
         seal(ByteArray(32) { 1 })
     }
 
@@ -167,7 +167,7 @@ class BiometricCryptoImplTest {
         var asked = false
 
         val request = async {
-            crypto.requestWrap(keyId = KeyId.BiometricVaultKek) { seal ->
+            crypto.requestWrap(keyId = CipherKeyId.BiometricVaultKek) { seal ->
                 asked = true
                 seal(ByteArray(32))
             }

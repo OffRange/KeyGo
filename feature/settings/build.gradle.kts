@@ -19,6 +19,8 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.core.identity)
     implementation(projects.core.item)
+    implementation(projects.core.sync)
+    implementation(projects.feature.account)
     implementation(projects.feature.autofill)
     implementation(projects.feature.backup)
 
@@ -27,6 +29,7 @@ dependencies {
     testImplementation(testFixtures(projects.core.security))
     testImplementation(testFixtures(projects.core.util))
     testImplementation(testFixtures(projects.core.rust))
+    testImplementation(testFixtures(projects.core.sync))
     testImplementation(testFixtures(projects.feature.autofill))
     testImplementation(testFixtures(projects.feature.backup))
 

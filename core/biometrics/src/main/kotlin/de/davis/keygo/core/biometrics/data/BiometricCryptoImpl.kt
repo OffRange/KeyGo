@@ -16,7 +16,7 @@ import de.davis.keygo.core.security.data.keyStoreManagerErrorFrom
 import de.davis.keygo.core.security.domain.KeyStoreManager
 import de.davis.keygo.core.security.domain.crypto.model.CryptographicData
 import de.davis.keygo.core.security.domain.model.CryptographicMode
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.security.domain.model.KeyStoreManagerError
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.asResult
@@ -72,7 +72,7 @@ internal class BiometricCryptoImpl(
     }
 
     override suspend fun <T> requestWrap(
-        keyId: KeyId,
+        keyId: CipherKeyId,
         policy: BiometricPolicy,
         wrap: (seal: (key: ByteArray) -> CryptographicData) -> T,
     ): Result<T, BiometricAuthError> = request(
@@ -89,7 +89,7 @@ internal class BiometricCryptoImpl(
     }
 
     override suspend fun requestUnwrap(
-        keyId: KeyId,
+        keyId: CipherKeyId,
         cryptographicData: CryptographicData,
         policy: BiometricPolicy,
     ): Result<Key, BiometricAuthError> = request(
@@ -100,7 +100,7 @@ internal class BiometricCryptoImpl(
     ) { it.unwrap(cryptographicData.data, "AES", Cipher.SECRET_KEY) }
 
     private suspend fun <T> request(
-        keyId: KeyId,
+        keyId: CipherKeyId,
         policy: BiometricPolicy,
         mode: CryptographicMode,
         iv: ByteArray? = null,

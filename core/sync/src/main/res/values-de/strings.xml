@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sync_error_invalid_address">Das sieht nicht nach einer Serveradresse aus.</string>
+    <string name="sync_error_unknown_host">Server nicht gefunden. Prüfe die Adresse und deine Internetverbindung.</string>
+    <string name="sync_error_timeout">Der Server antwortet nicht. Läuft er und ist er aus diesem Netzwerk erreichbar?</string>
+    <string name="sync_error_refused">Der Server hat die Verbindung abgelehnt. Ist der Port richtig?</string>
+    <string name="sync_error_unreachable">Server nicht erreichbar. Prüfe die Adresse.</string>
+    <string name="sync_error_insecure">Dieser Server nutzt kein HTTPS. KeyGo verbindet sich nur über eine sichere Verbindung.</string>
+    <string name="sync_error_untrusted_certificate">Dem Zertifikat des Servers wird nicht vertraut. Prüfe die Adresse oder die HTTPS-Einrichtung des Servers.</string>
+    <string name="sync_error_tls_failed">Keine sichere Verbindung möglich. Unterstützt der Server HTTPS auf diesem Port?</string>
+    <string name="sync_error_redirected">Diese Adresse leitet weiter. Gib die endgültige Adresse des Servers ein.</string>
+    <string name="sync_error_not_keygo">Das ist kein KeyGo-Server.</string>
+    <string name="sync_error_unavailable">Der Server ist erreichbar, aber KeyGo antwortet nicht. Versuch es später erneut.</string>
+    <string name="sync_error_server">Auf dem Server ist ein Fehler aufgetreten. Versuch es später erneut.</string>
+    <string name="sync_error_rate_limited">Zu viele Versuche. Warte kurz und versuch es dann erneut.</string>
+    <string name="sync_error_username_taken">Dieser Benutzername ist vergeben. Wähle einen anderen.</string>
+    <string name="sync_error_username_rejected">Dieser Server akzeptiert diesen Benutzernamen nicht.</string>
+    <string name="sync_error_invite_invalid">Dieser Einladungscode ist ungültig oder wurde schon benutzt.</string>
+    <string name="sync_error_invite_required">Dieser Server braucht einen Einladungscode.</string>
+    <string name="sync_error_invalid_credentials">Benutzername oder Passwort ist falsch.</string>
+    <string name="sync_error_signed_out">Du wurdest abgemeldet. Melde dich erneut an.</string>
+    <string name="sync_error_fresh_auth_required">Bestätige dein Passwort, um fortzufahren.</string>
+    <string name="sync_error_account_mismatch">Dieses Konto gehört zu einem anderen Tresor.</string>
+    <string name="sync_error_vault_locked">Entsperre KeyGo und versuch es noch einmal.</string>
+    <string name="sync_error_unknown">Etwas ist schiefgelaufen. Versuch es noch einmal.</string>
+
+    <string name="step_up_title">Bestätige deine Identität</string>
+    <string name="step_up_message">Für diese Aktion brauchst du dein Kontopasswort. Gib es ein, um fortzufahren.</string>
+    <string name="step_up_password">Kontopasswort</string>
+    <string name="step_up_confirm">Bestätigen</string>
+</resources>

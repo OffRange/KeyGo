@@ -1,11 +1,13 @@
 package de.davis.keygo.core.security
 
 import de.davis.keygo.core.security.domain.ExportArk
+import de.davis.keygo.core.security.domain.RawArkSession
 import de.davis.keygo.core.security.domain.Session
 import de.davis.keygo.core.security.domain.SessionError
 import de.davis.keygo.core.util.Result
 import de.davisalessandro.keygo.rust.AccountRecord
 import de.davisalessandro.keygo.rust.ArkCredential
+import de.davisalessandro.keygo.rust.ArkSession
 import de.davisalessandro.keygo.rust.EncryptedItemBlob
 import de.davisalessandro.keygo.rust.KeyWrapException
 import de.davisalessandro.keygo.rust.NewAccount
@@ -101,6 +103,9 @@ class FakeSession(startUnlocked: Boolean = false) : Session {
     }
 
     override fun arkCredential(): ArkCredential = FakeArkCredential(this)
+
+    @RawArkSession
+    override fun arkSession(): ArkSession = ArkSession(NoHandle)
 
     override suspend fun verifyPassword(
         password: String,

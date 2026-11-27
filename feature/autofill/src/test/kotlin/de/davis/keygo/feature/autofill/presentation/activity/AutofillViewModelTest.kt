@@ -39,7 +39,7 @@ import de.davis.keygo.core.item.domain.model.Vault
 import de.davis.keygo.core.item.domain.usecase.UpsertVaultItemUseCase
 import de.davis.keygo.core.security.crypto.FakeCryptographicScopeProvider
 import de.davis.keygo.core.security.crypto.FakeKeyStoreManager
-import de.davis.keygo.core.security.domain.model.KeyId
+import de.davis.keygo.core.security.domain.model.CipherKeyId
 import de.davis.keygo.core.util.FakeRegistrableDomainResolver
 import de.davis.keygo.core.util.Result
 import de.davis.keygo.core.util.assertSuccess
@@ -235,7 +235,7 @@ internal class AutofillViewModelTest {
                     salt = byteArrayOf(3),
                 ),
                 biometricWrappedArk = biometricCrypto
-                    .requestWrap(KeyId.BiometricVaultKek) { seal ->
+                    .requestWrap(CipherKeyId.BiometricVaultKek) { seal ->
                         seal(ByteArray(32) { it.toByte() })
                     }
                     .assertSuccess()

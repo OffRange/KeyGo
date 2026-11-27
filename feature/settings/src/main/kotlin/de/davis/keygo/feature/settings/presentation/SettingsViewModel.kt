@@ -8,6 +8,7 @@ import de.davis.keygo.core.identity.domain.repository.AccountRepository
 import de.davis.keygo.core.identity.domain.usecase.DisableBiometricsUseCase
 import de.davis.keygo.core.identity.domain.usecase.EnableBiometricsUseCase
 import de.davis.keygo.core.security.domain.repository.LockInfoRepository
+import de.davis.keygo.core.sync.domain.repository.ServerLinkRepository
 import de.davis.keygo.core.util.combine
 import de.davis.keygo.core.util.domain.model.snackbar.SnackbarMessage
 import de.davis.keygo.core.util.domain.snackbar.SnackbarManager
@@ -42,6 +43,7 @@ internal class SettingsViewModel(
     accountRepository: AccountRepository,
     appVersionRepository: AppVersionRepository,
     observeLastBackup: ObserveLastBackupUseCase,
+    serverLinkRepository: ServerLinkRepository,
 ) : ViewModel() {
 
     private val versionName = appVersionRepository.versionName
@@ -64,7 +66,8 @@ internal class SettingsViewModel(
         biometricsAvailable,
         biometricsUpdating,
         observeLastBackup(),
-    ) { account, lockInfo, autofill, biometrics, updatingBiometrics, lastBackup ->
+        serverLinkRepository.observeLink(),
+    ) { account, lockInfo, autofill, biometrics, updatingBiometrics, lastBackup, serverLink ->
         SettingsUiState(
             autofillEnabled = autofill.systemAutofillEnabled,
             chromeAutofillEnabled = autofill.chromeAutofillEnabled,
@@ -74,6 +77,7 @@ internal class SettingsViewModel(
             version = versionName,
             lastBackupAt = lastBackup?.finishedAt,
             lockTimeout = lockInfo.autoLockTimeout,
+            serverLink = serverLink,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -123,12 +127,12 @@ internal class SettingsViewModel(
 
             SettingsUiEvent.OpenChromeAutofillSettings -> chromeAutofillRepository.openChromeAutofillSettings()
 
-            SettingsUiEvent.ResetPassword -> _event.trySend(SettingsEvent.NavigateToChangePassword)
-
             SettingsUiEvent.OpenBackup -> _event.trySend(SettingsEvent.NavigateToBackup)
 
             SettingsUiEvent.LibrariesClicked -> _event.trySend(SettingsEvent.NavigateToLibraries)
             SettingsUiEvent.ReportIssue -> _event.trySend(SettingsEvent.ReportIssue)
+
+            SettingsUiEvent.OpenAccount -> _event.trySend(SettingsEvent.NavigateToAccount)
         }
     }
 

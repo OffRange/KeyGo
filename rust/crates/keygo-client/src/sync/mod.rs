@@ -16,4 +16,4 @@ pub use error::{SyncError, SyncResult};
 pub use signer::{SharedSigner, SignError};
 pub use state::{Clock, SystemClock};
 pub use tokens::{StoredSession, TokenStore, TokenStoreError};
-pub use transport::{Header, HttpRequest, HttpResponse, Transport, TransportError};
+pub use transport::{Header, HttpRequest, HttpResponse, NetworkError, Transport};
